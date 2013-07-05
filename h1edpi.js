@@ -11,12 +11,16 @@ h1e.w = undefined
 h1e.h = undefined
 h1e.fps = undefined
 h1e.ctx = undefined
+h1e.started = false
 h1e.sprites = {}
 h1e.sections = []
 h1e.preloading = true
 h1e.error_cooldown = 0
 h1e.num_sprites_incomplete = 0
 h1e.bgstyle = "#005500"
+h1e.keys = {}
+h1e.has_focus = true
+h1e.cb_draw_no_focus = undefined
 
 h1e.init = function(canvas, w, h, fps){
 	h1e.checkdom(canvas)
@@ -76,6 +80,11 @@ h1e.get_frame_count = function(sprite_name){
 	return sprite.tcs.length
 }
 
+h1e.draw_rect = function(x, y, w, h, fillStyle){
+	h1e.ctx.fillStyle = fillStyle
+	h1e.ctx.fillRect(x*h1e.scale, y*h1e.scale, w*h1e.scale, h*h1e.scale)
+}
+
 h1e.draw_sprite = function(x, y, sprite_name, opts){
 	var sprite = h1e.sprites[sprite_name]
 	if(!sprite){
@@ -111,6 +120,7 @@ h1e.push_section = function(section){
 	h1e.checkobject(section)
 
 	section._h1e_updated = true
+	section._h1e_last_hash = undefined
 	h1e.sections.push(section)
 }
 
@@ -120,33 +130,99 @@ h1e.remove_section = function(section){
 		h1e.splice(i, 1)
 }
 
+h1e.keyname_to_keycodes = function(keyname){
+	var keycodes = {
+		left: [37],
+		up: [38],
+		right: [39],
+		down: [40],
+		space: [32],
+		escape: [27],
+	}
+	if(keycodes[keyname])
+		return keycodes[keyname]
+	if(h1e.isinteger(keyname))
+		return [keyname]
+	if(h1e.isstring(keyname) && keyname.length == 1)
+		return [keyname.toUpperCase().charCodeAt(0)]
+	throw new Error("Unknown keyname: \""+keyname+"\"")
+}
+
+h1e.iskey = function(key, keyname){
+	var keynames = h1e.isarray(keyname) ? keyname : [keyname]
+	return keynames.some(function(keyname){
+		var keycodes = h1e.keyname_to_keycodes(keyname)
+		return keycodes.some(function(keycode){
+			if(key == keycode)
+				return true
+		})
+	})
+}
+
+h1e.keydown = function(keyname){
+	var keycodes = h1e.keyname_to_keycodes(keyname)
+	return keycodes.some(function(keycode){
+		if(h1e.keys[keycode])
+			return true
+	})
+}
+
 h1e.start = function(){
+	if(h1e.started)
+		throw new Error("h1e.start: h1edpi already started")
+	h1e.started = true
+
 	h1e.preload.all_added(function(){
 		h1e.preloading = false
 	})
+
+	document.addEventListener('keydown', function(e){
+		h1e.keys[e.keyCode] = true
+		var section = h1e.sections[h1e.sections.length-1]
+		if(section && section.event(h1e, {type:"keydown", key:e.keyCode}))
+			section._h1e_updated = true
+	})
+	document.addEventListener('keyup', function(e){
+		h1e.keys[e.keyCode] = false
+		var section = h1e.sections[h1e.sections.length-1]
+		if(section && section.event(h1e, {type:"keyup", key:e.keyCode}))
+			section._h1e_updated = true
+	})
+	window.onfocus = function(e){
+		h1e.has_focus = true
+	}
+	window.onblur = function(e){
+		h1e.has_focus = false
+	}
 
 	h1e.ctx = h1e.canvas.getContext("2d")
 	h1e.ctx.imageSmoothingEnabled = false
 
 	function draw_bg(){
 		if(h1e.bgstyle){
-			h1e.ctx.fillStyle = h1e.bgstyle
-			h1e.ctx.fillRect(0, 0, h1e.scale*h1e.w, h1e.scale*h1e.h)
+			h1e.draw_rect(0, 0, h1e.w, h1e.h, h1e.bgstyle)
 		}
 	}
 
 	function update(){
+		setTimeout(update, 1000/h1e.fps)
 		var section = h1e.sections[h1e.sections.length-1]
 		if(section && section.update){
-			var did = section.update(h1e)
-			if(did)
-				section._h1e_updated = true
+			var r = section.update(h1e)
+			if(h1e.isarray(r)){
+				var hash = h1e.dump(r)
+				if(hash != section._h1e_last_hash){
+					section._h1e_last_hash = hash
+					section._h1e_updated = true
+				}
+			} else {
+				if(r) section._h1e_updated = true
+			}
 		}
-
-		setTimeout(update, 1000/h1e.fps)
 	}
 	update()
 
+	var last_has_focus = true
 	function draw(){
 		window.requestAnimationFrameCompatible(draw)
 
@@ -165,17 +241,23 @@ h1e.start = function(){
 
 		if(h1e.preloading){
 			draw_bg()
-			h1e.ctx.fillText("Preloading...", 0, 0)
+			h1e.ctx.save()
+			h1e.ctx.fillStyle = "#ffffff"
+			h1e.ctx.fillText("Preloading...", 40, 40)
+			h1e.ctx.restore()
 		} else if(section){
-			if(section._h1e_updated){
+			if(section._h1e_updated || (h1e.has_focus != last_has_focus)){
 				draw_bg()
 				section.draw(h1e)
 				if(h1e.num_sprites_incomplete == 0)
 					section._h1e_updated = false
+				if(!h1e.has_focus && h1e.cb_draw_no_focus)
+					h1e.cb_draw_no_focus(h1e)
+				last_has_focus = h1e.has_focus
 			}
 		} else {
 			draw_bg()
-			h1e.ctx.fillText("(No Section)", 0, 0)
+			h1e.ctx.fillText("[No Section]", 0, 0)
 		}
 		h1e.ctx.restore()
 
@@ -187,6 +269,8 @@ h1e.start = function(){
 	}
 	window.requestAnimationFrameCompatible(draw)
 }
+
+/* Internal */
 
 h1e.get_sprite_image = function(sprite){
 	h1e.checkobject(sprite)
@@ -251,14 +335,14 @@ h1e.get_image = function(name, base){
 			return /mask=(#[a-f0-9]+)/.exec(mod)
 		},f: function(img, m){
 			var color = new h1e.Color(m[1])
-			console.log("color:", color)
+			//console.log("color:", color)
 			return h1e.mask_image(img, color)
 		}},
 	]
 	var did = methods.some(function(method){
 		var m2 = method.t(mod)
 		if(m2){
-			console.log("Applying", mod, "in", name)
+			//console.log("Applying", mod, "in", name)
 			img = method.f(img, m2)
 			return true
 		}
@@ -279,58 +363,6 @@ h1e.get_image = function(name, base){
 		return img
 	}
 }
-
-/* Misc. */
-
-window.requestAnimationFrameCompatible = (function(){
-	return window.requestAnimationFrame ||
-		window.webkitRequestAnimationFrame ||
-		window.mozRequestAnimationFrame ||
-		window.oRequestAnimationFrame ||
-		window.msRequestAnimationFrame ||
-		function(callback){
-			window.setTimeout(callback, 1000/30);
-		}
-})()
-
-h1e.isobject = function(value){
-	return !(typeof value !== "object") }
-h1e.isarray = function(value){
-	return (typeof(value) == 'object' && value !== null && value instanceof Array) }
-h1e.isstring = function(value){
-	return !(typeof value !== "string") }
-h1e.isnumber = function(value){
-	return (typeof value === "number" && value === value) }
-h1e.isbool = function(value){
-	return (typeof value === "boolean") }
-h1e.isfinite = function(value){
-	return !(typeof value !== "number" || !isFinite(value)) }
-h1e.isinteger = function(value){
-	return !(typeof value !== "number" || !isFinite(value) || value != Math.floor(value)) }
-h1e.isdom = function(value){
-	return h1e.isobject(value) && !!value.nodeType }
-
-h1e.checkobject = function(value){
-	if(!h1e.isobject(value)) throw new Error("Value is not object") }
-h1e.checkarray = function(value){
-	if(!h1e.isarray(value)) throw new Error("Value is not array") }
-h1e.checkstring = function(value){
-	if(!h1e.isstring(value)) throw new Error("Value is not string") }
-h1e.checknumber = function(value){
-	if(!h1e.isnumber(value)) throw new Error("Value is not number") }
-h1e.checkbool = function(value){
-	if(!h1e.isbool(value)) throw new Error("Value is not bool") }
-h1e.checkfinite = function(value){
-	if(!h1e.isfinite(value)) throw new Error("Value is not a finite number") }
-h1e.checkinteger = function(value){
-	if(!h1e.isinteger(value)) throw new Error("Value is not integer") }
-h1e.checkdom = function(value){
-	if(!h1e.isdom(value)) throw new Error("Value is not dom") }
-h1e.checkbool_or_undefined = function(value){
-	if(!h1e.isbool(value) && value !== undefined)
-		throw new Error("Value is not bool or undefined") }
-h1e.assert = function(v){
-	if(!v) throw new Error("Assertion failed") }
 
 /* Image preloading */
 
@@ -510,5 +542,103 @@ h1e.mask_image = function(img, mask)
 	return img2
 }
 
+/* Misc. */
+
+window.requestAnimationFrameCompatible = (function(){
+	return window.requestAnimationFrame ||
+		window.webkitRequestAnimationFrame ||
+		window.mozRequestAnimationFrame ||
+		window.oRequestAnimationFrame ||
+		window.msRequestAnimationFrame ||
+		function(callback){
+			window.setTimeout(callback, 1000/30);
+		}
+})()
+
+h1e.isobject = function(value){
+	return !(typeof value !== "object") }
+h1e.isarray = function(value){
+	return (typeof(value) == 'object' && value !== null && value instanceof Array) }
+h1e.isstring = function(value){
+	return !(typeof value !== "string") }
+h1e.isnumber = function(value){
+	return (typeof value === "number" && value === value) }
+h1e.isbool = function(value){
+	return (typeof value === "boolean") }
+h1e.isfinite = function(value){
+	return !(typeof value !== "number" || !isFinite(value)) }
+h1e.isinteger = function(value){
+	return !(typeof value !== "number" || !isFinite(value) || value != Math.floor(value)) }
+h1e.isdom = function(value){
+	return h1e.isobject(value) && !!value.nodeType }
+
+h1e.checkobject = function(value){
+	if(!h1e.isobject(value)) throw new Error("Value is not object") }
+h1e.checkarray = function(value){
+	if(!h1e.isarray(value)) throw new Error("Value is not array") }
+h1e.checkstring = function(value){
+	if(!h1e.isstring(value)) throw new Error("Value is not string") }
+h1e.checknumber = function(value){
+	if(!h1e.isnumber(value)) throw new Error("Value is not number") }
+h1e.checkbool = function(value){
+	if(!h1e.isbool(value)) throw new Error("Value is not bool") }
+h1e.checkfinite = function(value){
+	if(!h1e.isfinite(value)) throw new Error("Value is not a finite number") }
+h1e.checkinteger = function(value){
+	if(!h1e.isinteger(value)) throw new Error("Value is not integer") }
+h1e.checkdom = function(value){
+	if(!h1e.isdom(value)) throw new Error("Value is not dom") }
+h1e.checkbool_or_undefined = function(value){
+	if(!h1e.isbool(value) && value !== undefined)
+		throw new Error("Value is not bool or undefined") }
+h1e.assert = function(v){
+	if(!v) throw new Error("Assertion failed") }
+
+h1e.dump = function(arr, dumped_objects){
+	if(dumped_objects === undefined)
+		var dumped_objects = []
+	var dumped_text = ""
+	if(typeof(arr) == 'object' && arr === null){
+		dumped_text += "null"
+	} else if(typeof(arr) == 'object' && arr !== null && arr instanceof Array){
+		if(dumped_objects.indexOf(arr) != -1)
+			return "(circular reference)"
+		dumped_objects.push(arr)
+		dumped_text += "["
+		var first = true
+		for(var i in arr){
+			if(!first)
+				dumped_text += ","
+			first = false
+			var value = arr[i]
+			dumped_text += h1e.dump(value, dumped_objects)
+		}
+		dumped_text += "]"
+	} else if(typeof(arr) == 'object'){
+		if(dumped_objects.indexOf(arr) != -1)
+			return "(circular reference)"
+		dumped_objects.push(arr)
+		dumped_text += "{"
+		var first = true
+		for(var item in arr){
+			if(!first)
+				dumped_text += ","
+			first = false
+			var value = arr[item]
+			dumped_text += "'"+item+"':"+h1e.dump(value, dumped_objects)
+		}
+		dumped_text += "}"
+	} else {
+		if(typeof(arr) == 'string')
+			dumped_text = "\""+arr+"\""
+		else if(typeof(arr) == 'number')
+			dumped_text = arr
+		else if(typeof(arr) == 'undefined')
+			dumped_text = "undefined"
+		else
+			dumped_text = ""+arr+" ("+typeof(arr)+")"
+	}
+	return dumped_text
+}
 
 }()
