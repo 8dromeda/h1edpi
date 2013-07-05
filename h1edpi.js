@@ -107,12 +107,24 @@ h1e.draw_sprite = function(x, y, sprite_name, opts){
 	} else {
 		tc = [0, 0, img.width/h1e.scale, img.height/h1e.scale]
 	}
-	var dx = x * h1e.scale
-	var dy = y * h1e.scale
-	var dw = tc[2] * h1e.scale
-	var dh = tc[3] * h1e.scale
-	var s = sprite.cache_scale
-	h1e.ctx.drawImage(img, tc[0]*s, tc[1]*s, tc[2]*s, tc[3]*s, dx, dy, dw, dh)
+	var sx = tc[0]
+	var sy = tc[1]
+	var sw = tc[2]
+	var sh = tc[3]
+	var dx = x
+	var dy = y
+	var dw = tc[2]
+	var dh = tc[3]
+	if(opts && opts.cut){
+		sx += opts.cut[0]
+		sy += opts.cut[1]
+		sw = opts.cut[2]
+		sh = opts.cut[3]
+		dw = opts.cut[2]
+		dh = opts.cut[3]
+	}
+	var s = h1e.scale
+	h1e.ctx.drawImage(img, sx*s, sy*s, sw*s, sh*s, dx*s, dy*s, dw*s, dh*s)
 	//h1e.ctx.drawImage(img, dx, dy)
 }
 
