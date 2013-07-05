@@ -15,6 +15,7 @@ h1e.sprites = {}
 h1e.sections = []
 h1e.preloading = true
 h1e.error_cooldown = 0
+h1e.num_sprites_incomplete = 0
 h1e.bgstyle = "#005500"
 
 h1e.init = function(canvas, w, h, fps){
@@ -31,11 +32,21 @@ h1e.init = function(canvas, w, h, fps){
 	h1e.update_scale()
 }
 
+h1e.resize_canvas = function(w, h){
+	$("#main_canvas")[0].width = Math.floor((w)/12)*12
+	$("#main_canvas")[0].height = Math.floor((h)/12)*12
+	h1e.update_scale()
+}
+
 h1e.update_scale = function(){
 	var canvas = h1e.canvas
 	h1e.scale = Math.floor(Math.min(canvas.width/h1e.w, canvas.height/h1e.h))
 	h1e.off_x = (canvas.width  - h1e.w*h1e.scale) / 2
 	h1e.off_y = (canvas.height - h1e.h*h1e.scale) / 2
+
+	var section = h1e.sections[h1e.sections.length-1]
+	if(section)
+		section._h1e_updated = true
 }
 
 h1e.add_image = function(name, url){
@@ -45,21 +56,30 @@ h1e.add_image = function(name, url){
 h1e.def_sprite = function(sprite_name, img_name, tcs){
 	h1e.checkstring(sprite_name)
 	h1e.checkstring(img_name)
-	h1e.checkarray(tcs)
+	if(!h1e.isarray(tcs) && tcs !== undefined)
+		throw new Error("tcs should be array or undefined")
 
 	h1e.sprites[sprite_name] = {
 		img_name: img_name,
 		tcs: tcs,
 		cache_img: undefined,
 		cache_scale: undefined,
+		draw_iteration: 0,
 		error_count: 0,
 	}
 }
 
-h1e.draw = function(x, y, sprite_name){
+h1e.get_frame_count = function(sprite_name){
+	var sprite = h1e.sprites[sprite_name]
+	if(!sprite)
+		throw new Error("Sprite \""+sprite_name+"\" does not exist")
+	return sprite.tcs.length
+}
+
+h1e.draw_sprite = function(x, y, sprite_name, opts){
 	var sprite = h1e.sprites[sprite_name]
 	if(!sprite){
-		console.log("h1e.draw: Couldn't get sprite")
+		console.log("h1e.draw_sprite: Couldn't get sprite")
 		h1e.error_cooldown = ERROR_COOLDOWN
 		return
 	}
@@ -67,7 +87,17 @@ h1e.draw = function(x, y, sprite_name){
 	if(!img){
 		return
 	}
-	var tc = sprite.tcs[0]
+	var tc = undefined
+	if(sprite.tcs){
+		var frame = 0
+		if(opts && opts.frame)
+			frame = opts.frame
+		var tc = sprite.tcs[frame]
+		if(tc === undefined)
+			throw new Error(sprite_name+" does not have frame "+frame)
+	} else {
+		tc = [0, 0, img.width/h1e.scale, img.height/h1e.scale]
+	}
 	var dx = x * h1e.scale
 	var dy = y * h1e.scale
 	var dw = tc[2] * h1e.scale
@@ -80,6 +110,7 @@ h1e.draw = function(x, y, sprite_name){
 h1e.push_section = function(section){
 	h1e.checkobject(section)
 
+	section._h1e_updated = true
 	h1e.sections.push(section)
 }
 
@@ -95,11 +126,32 @@ h1e.start = function(){
 	})
 
 	h1e.ctx = h1e.canvas.getContext("2d")
+	h1e.ctx.imageSmoothingEnabled = false
+
+	function draw_bg(){
+		if(h1e.bgstyle){
+			h1e.ctx.fillStyle = h1e.bgstyle
+			h1e.ctx.fillRect(0, 0, h1e.scale*h1e.w, h1e.scale*h1e.h)
+		}
+	}
+
+	function update(){
+		var section = h1e.sections[h1e.sections.length-1]
+		if(section && section.update){
+			var did = section.update(h1e)
+			if(did)
+				section._h1e_updated = true
+		}
+
+		setTimeout(update, 1000/h1e.fps)
+	}
+	update()
 
 	function draw(){
+		window.requestAnimationFrameCompatible(draw)
+
 		if(h1e.error_cooldown){
 			h1e.error_cooldown--
-			window.requestAnimationFrameCompatible(draw)
 			return
 		}
 
@@ -109,27 +161,46 @@ h1e.start = function(){
 		h1e.ctx.clip()
 		h1e.ctx.translate(h1e.off_x, h1e.off_y)
 
-		h1e.ctx.fillStyle = h1e.bgstyle
-		//h1e.ctx.fillRect(0, 0, h1e.canvas.width, h1e.canvas.height)
-		//h1e.ctx.fillRect(h1e.off_x, h1e.off_y, h1e.scale*h1e.w, h1e.scale*h1e.h)
-		h1e.ctx.fillRect(0, 0, h1e.scale*h1e.w, h1e.scale*h1e.h)
+		var section = h1e.sections[h1e.sections.length-1]
+
 		if(h1e.preloading){
+			draw_bg()
 			h1e.ctx.fillText("Preloading...", 0, 0)
+		} else if(section){
+			if(section._h1e_updated){
+				draw_bg()
+				section.draw(h1e)
+				if(h1e.num_sprites_incomplete == 0)
+					section._h1e_updated = false
+			}
 		} else {
-			h1e.sections[h1e.sections.length-1].draw(h1e)
+			draw_bg()
+			h1e.ctx.fillText("(No Section)", 0, 0)
 		}
 		h1e.ctx.restore()
-		window.requestAnimationFrameCompatible(draw)
+
+		for(name in h1e.sprites){
+			var sprite = h1e.sprites[name]
+			sprite.draw_iteration++
+		}
+		h1e.num_sprites_incomplete = 0
 	}
 	window.requestAnimationFrameCompatible(draw)
 }
 
 h1e.get_sprite_image = function(sprite){
 	h1e.checkobject(sprite)
-	if(sprite.cache_img && sprite.cache_scale == h1e.scale)
+	if(sprite.cache_img && sprite.cache_scale == h1e.scale){
+		if(!sprite.cache_img.complete){
+			h1e.num_sprites_incomplete++
+		}
 		return sprite.cache_img
+	}
 	var img = h1e.get_image(sprite.img_name+"|scale="+h1e.scale)
 	if(!img){
+		h1e.num_sprites_incomplete++
+		if(sprite.draw_iteration < 3)
+			return undefined
 		sprite.error_count++
 		if(sprite.error_count > 10){
 			console.log("h1e.get_sprite_image: Failed to get \""+sprite.img_name+
@@ -199,8 +270,10 @@ h1e.get_image = function(name, base){
 	}
 	next = m[2]
 	if(next){
-		if(!img.complete)
+		if(!img.complete){
+			console.log("h1e.get_image:", name, "is incomplete for now")
 			return undefined
+		}
 		return h1e.get_image(next, img)
 	} else {
 		return img
