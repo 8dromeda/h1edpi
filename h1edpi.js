@@ -127,7 +127,9 @@ h1e.push_section = function(section){
 h1e.remove_section = function(section){
 	var i = h1e.sections.indexOf(section)
 	if(i != -1)
-		h1e.splice(i, 1)
+		h1e.sections.splice(i, 1)
+	else
+		throw new Error("h1e.remove_section: Section not found")
 }
 
 h1e.keyname_to_keycodes = function(keyname){
@@ -243,7 +245,7 @@ h1e.start = function(){
 			draw_bg()
 			h1e.ctx.save()
 			h1e.ctx.fillStyle = "#ffffff"
-			h1e.ctx.fillText("Preloading...", 40, 40)
+			h1e.ctx.fillText("[Preloading...]", 40, 40)
 			h1e.ctx.restore()
 		} else if(section){
 			if(section._h1e_updated || (h1e.has_focus != last_has_focus)){
@@ -257,7 +259,10 @@ h1e.start = function(){
 			}
 		} else {
 			draw_bg()
-			h1e.ctx.fillText("[No Section]", 0, 0)
+			h1e.ctx.save()
+			h1e.ctx.fillStyle = "#ffffff"
+			h1e.ctx.fillText("[No Section]", 40, 40)
+			h1e.ctx.restore()
 		}
 		h1e.ctx.restore()
 
