@@ -120,7 +120,6 @@ h1e.push_section = function(section){
 	h1e.checkobject(section)
 
 	section._h1e_updated = true
-	section._h1e_last_hash = undefined
 	h1e.sections.push(section)
 }
 
@@ -211,15 +210,7 @@ h1e.start = function(){
 		var section = h1e.sections[h1e.sections.length-1]
 		if(section && section.update){
 			var r = section.update(h1e)
-			if(h1e.isarray(r)){
-				var hash = h1e.dump(r)
-				if(hash != section._h1e_last_hash){
-					section._h1e_last_hash = hash
-					section._h1e_updated = true
-				}
-			} else {
-				if(r) section._h1e_updated = true
-			}
+			if(r) section._h1e_updated = true
 		}
 	}
 	update()
