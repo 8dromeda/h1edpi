@@ -346,6 +346,15 @@ h1e.get_image = function(name, base){
 			//console.log("color:", color)
 			return h1e.mask_image(img, color)
 		}},
+		{t: function(mod){
+			return /recolor=(#[a-f0-9]+),(#[a-f0-9]+)/.exec(mod)
+		},f: function(img, m){
+			var from = new h1e.Color(m[1])
+			var to = new h1e.Color(m[2])
+			//console.log("from:", from)
+			//console.log("to:", to)
+			return h1e.recolor_image(img, from, to)
+		}},
 	]
 	var did = methods.some(function(method){
 		var m2 = method.t(mod)
@@ -541,6 +550,35 @@ h1e.mask_image = function(img, mask)
 			continue
 		if(mask.eqArr(im.data, i*4))
 			im.data[i*4+3] = 0
+	}
+	ctx.putImageData(im, 0, 0)
+
+	var dataurl = canvas.toDataURL()
+	var img2 = new Image()
+	img2.src = dataurl
+	return img2
+}
+
+h1e.recolor_image = function(img, from, to)
+{
+	h1e.checkdom(img)
+	h1e.checkobject(from)
+	h1e.checkobject(to)
+
+	var w = img.width
+	var h = img.height
+	var canvas = document.createElement('canvas')
+	canvas.width = w
+	canvas.height = h
+	var ctx = canvas.getContext("2d")
+	ctx.drawImage(img, 0, 0)
+
+	var im = ctx.getImageData(0, 0, w, h)
+	for(var i=0; i<w*h; i++){
+		if(im.data[i*4+3] == 0)
+			continue
+		if(from.eqArr(im.data, i*4))
+			to.setArr(im.data, i*4)
 	}
 	ctx.putImageData(im, 0, 0)
 
