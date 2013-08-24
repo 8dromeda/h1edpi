@@ -21,6 +21,12 @@ h1e.bgstyle = "#005500"
 h1e.keys = {}
 h1e.has_focus = true
 h1e.cb_draw_no_focus = undefined
+h1e.mouse = {
+	out: true,
+	x: 0,
+	y: 0,
+	buttons: {},
+}
 
 h1e.init = function(canvas, w, h, fps){
 	h1e.checkdom(canvas)
@@ -57,7 +63,7 @@ h1e.add_image = function(name, url){
 	h1e.preload.add_image(name, url)
 }
 
-h1e.def_sprite = function(sprite_name, img_name, tcs){
+h1e.def_sprite = function(sprite_name, img_name, tcs, off){
 	h1e.checkstring(sprite_name)
 	h1e.checkstring(img_name)
 	if(!h1e.isarray(tcs) && tcs !== undefined)
@@ -66,6 +72,7 @@ h1e.def_sprite = function(sprite_name, img_name, tcs){
 	h1e.sprites[sprite_name] = {
 		img_name: img_name,
 		tcs: tcs,
+		off: off,
 		cache_img: undefined,
 		cache_scale: undefined,
 		draw_iteration: 0,
@@ -106,6 +113,10 @@ h1e.draw_sprite = function(x, y, sprite_name, opts){
 			throw new Error(sprite_name+" does not have frame "+frame)
 	} else {
 		tc = [0, 0, img.width/h1e.scale, img.height/h1e.scale]
+	}
+	if(sprite.off){
+		x -= sprite.off[0]
+		y -= sprite.off[1]
 	}
 	var sx = tc[0]
 	var sy = tc[1]
@@ -180,6 +191,23 @@ h1e.keydown = function(keyname){
 	})
 }
 
+// Returns false if mouse cannot be tracked at it's current position
+h1e.mouseout = function(){
+	return h1e.mouse.out
+}
+
+h1e.mousex = function(){
+	return h1e.mouse.x
+}
+
+h1e.mousey = function(){
+	return h1e.mouse.y
+}
+
+h1e.mousedown = function(button){
+	return !!h1e.mouse.buttons[button]
+}
+
 h1e.start = function(){
 	if(h1e.started)
 		throw new Error("h1e.start: h1edpi already started")
@@ -207,6 +235,31 @@ h1e.start = function(){
 	window.onblur = function(e){
 		h1e.has_focus = false
 	}
+	document.addEventListener('mousemove', function(e){
+		var r = h1e.canvas.getBoundingClientRect()
+		h1e.mouse.x = Math.floor((e.clientX - r.left - h1e.off_x) / h1e.scale)
+		h1e.mouse.y = Math.floor((e.clientY - r.top - h1e.off_y) / h1e.scale)
+		h1e.mouse.out = false
+	})
+	document.addEventListener('mouseout', function(e){
+		h1e.mouse.out = true
+	})
+	document.addEventListener('mousedown', function(e){
+		if(e.button == 0)
+			h1e.mouse.buttons["left"] = true
+		if(e.button == 1)
+			h1e.mouse.buttons["middle"] = true
+		if(e.button == 2)
+			h1e.mouse.buttons["right"] = true
+	})
+	document.addEventListener('mouseup', function(e){
+		if(e.button == 0)
+			h1e.mouse.buttons["left"] = false
+		if(e.button == 1)
+			h1e.mouse.buttons["middle"] = false
+		if(e.button == 2)
+			h1e.mouse.buttons["right"] = false
+	})
 
 	h1e.ctx = h1e.canvas.getContext("2d")
 	h1e.ctx.imageSmoothingEnabled = false
