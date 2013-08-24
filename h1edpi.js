@@ -251,6 +251,9 @@ h1e.start = function(){
 			h1e.mouse.buttons["middle"] = true
 		if(e.button == 2)
 			h1e.mouse.buttons["right"] = true
+		var section = h1e.sections[h1e.sections.length-1]
+		if(section && section.mousedown)
+			section.mousedown(h1e)
 	})
 	document.addEventListener('mouseup', function(e){
 		if(e.button == 0)
@@ -259,6 +262,9 @@ h1e.start = function(){
 			h1e.mouse.buttons["middle"] = false
 		if(e.button == 2)
 			h1e.mouse.buttons["right"] = false
+		var section = h1e.sections[h1e.sections.length-1]
+		if(section && section.mouseup)
+			section.mouseup(h1e)
 	})
 
 	h1e.ctx = h1e.canvas.getContext("2d")
