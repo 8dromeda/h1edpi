@@ -252,8 +252,8 @@ h1e.start = function(){
 		if(e.button == 2)
 			h1e.mouse.buttons["right"] = true
 		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.mousedown)
-			section.mousedown(h1e)
+		if(section && section.event(h1e, {type:"mousedown"}))
+			section._h1e_updated = true
 	})
 	document.addEventListener('mouseup', function(e){
 		if(e.button == 0)
@@ -263,8 +263,8 @@ h1e.start = function(){
 		if(e.button == 2)
 			h1e.mouse.buttons["right"] = false
 		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.mouseup)
-			section.mouseup(h1e)
+		if(section && section.event(h1e, {type:"mouseup"}))
+			section._h1e_updated = true
 	})
 
 	h1e.ctx = h1e.canvas.getContext("2d")
@@ -310,6 +310,7 @@ h1e.start = function(){
 			h1e.ctx.fillText("[Preloading...]", 40, 40)
 			h1e.ctx.restore()
 		} else if(section){
+			// Redraw section if something has been updated
 			if(section._h1e_updated || (h1e.has_focus != last_has_focus)){
 				draw_bg()
 				section.draw(h1e)
