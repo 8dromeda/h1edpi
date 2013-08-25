@@ -17,6 +17,7 @@ h1e.sections = []
 h1e.preloading = true
 h1e.error_cooldown = 0
 h1e.num_sprites_incomplete = 0
+h1e.incomplete_notified = {}
 h1e.bgstyle = "#005500"
 h1e.keys = {}
 h1e.has_focus = true
@@ -432,7 +433,10 @@ h1e.get_image = function(name, base){
 	next = m[2]
 	if(next){
 		if(!img.complete){
-			console.log("h1e.get_image:", name, "is incomplete for now")
+			if(!h1e.incomplete_notified[name]){
+				console.log("h1e.get_image:", name, "is incomplete for now")
+				h1e.incomplete_notified[name] = true
+			}
 			return undefined
 		}
 		return h1e.get_image(next, img)
