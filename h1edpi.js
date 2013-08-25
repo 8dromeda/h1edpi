@@ -367,6 +367,32 @@ h1e.get_sprite_image = function(sprite){
 	return sprite.cache_img
 }
 
+var mod_methods = [
+	{t: function(mod){
+		return /scale=(\d+)/.exec(mod)
+	},f: function(img, m){
+		var scale = Number(m[1])
+		//console.log("scale:", scale)
+		return h1e.scale_image(img, scale)
+	}},
+	{t: function(mod){
+		return /mask=(#[a-f0-9]+)/.exec(mod)
+	},f: function(img, m){
+		var color = new h1e.Color(m[1])
+		//console.log("color:", color)
+		return h1e.mask_image(img, color)
+	}},
+	{t: function(mod){
+		return /recolor=(#[a-f0-9]+),(#[a-f0-9]+)/.exec(mod)
+	},f: function(img, m){
+		var from = new h1e.Color(m[1])
+		var to = new h1e.Color(m[2])
+		//console.log("from:", from)
+		//console.log("to:", to)
+		return h1e.recolor_image(img, from, to)
+	}},
+]
+
 h1e.get_image = function(name, base){
 	var img = undefined
 	var next = undefined
@@ -392,32 +418,7 @@ h1e.get_image = function(name, base){
 		m = [undefined, next]
 	//console.log("mod:", m)
 	var mod = m[1]
-	methods = [
-		{t: function(mod){
-			return /scale=(\d+)/.exec(mod)
-		},f: function(img, m){
-			var scale = Number(m[1])
-			//console.log("scale:", scale)
-			return h1e.scale_image(img, scale)
-		}},
-		{t: function(mod){
-			return /mask=(#[a-f0-9]+)/.exec(mod)
-		},f: function(img, m){
-			var color = new h1e.Color(m[1])
-			//console.log("color:", color)
-			return h1e.mask_image(img, color)
-		}},
-		{t: function(mod){
-			return /recolor=(#[a-f0-9]+),(#[a-f0-9]+)/.exec(mod)
-		},f: function(img, m){
-			var from = new h1e.Color(m[1])
-			var to = new h1e.Color(m[2])
-			//console.log("from:", from)
-			//console.log("to:", to)
-			return h1e.recolor_image(img, from, to)
-		}},
-	]
-	var did = methods.some(function(method){
+	var did = mod_methods.some(function(method){
 		var m2 = method.t(mod)
 		if(m2){
 			//console.log("Applying", mod, "in", name)
