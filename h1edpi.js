@@ -362,6 +362,8 @@ h1e.get_sprite_image = function(sprite){
 		}
 		return undefined
 	}
+	if(!img.complete)
+		h1e.num_sprites_incomplete++
 	sprite.cache_img = img
 	sprite.cache_scale = h1e.scale
 	return sprite.cache_img
