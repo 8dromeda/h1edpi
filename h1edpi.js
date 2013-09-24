@@ -96,7 +96,7 @@ h1e.draw_rect = function(x, y, w, h, fillStyle){
 h1e.draw_sprite = function(x, y, sprite_name, opts){
 	var sprite = h1e.sprites[sprite_name]
 	if(!sprite){
-		console.log("h1e.draw_sprite: Couldn't get sprite")
+		console.log("h1e.draw_sprite: Couldn't get sprite: "+sprite_name)
 		h1e.error_cooldown = ERROR_COOLDOWN
 		return
 	}
