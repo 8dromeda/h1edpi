@@ -29,6 +29,8 @@ h1e.mouse = {
 	y: 0,
 	buttons: {},
 }
+h1e.nofocus_time = 0
+h1e.nofocus_framedrop = 0
 
 h1e.init = function(canvas, w, h, fps){
 	h1e.checkdom(canvas)
@@ -313,8 +315,13 @@ h1e.start = function(){
 			h1e.ctx.fillText("[Preloading...]", 40, 40)
 			h1e.ctx.restore()
 		} else if(section){
+			if(!h1e.has_focus) h1e.nofocus_time += 1.0/h1e.fps
+			else               h1e.nofocus_time = 0
+			if(h1e.nofocus_time > 4 && h1e.nofocus_framedrop < 4){
+				h1e.nofocus_framedrop++
 			// Redraw section if something has been updated
-			if(section._h1e_updated || (h1e.has_focus != last_has_focus)){
+			} else if(section._h1e_updated || (h1e.has_focus != last_has_focus)){
+				h1e.nofocus_framedrop = 0
 				draw_bg()
 				section.draw(h1e)
 				if(h1e.num_sprites_incomplete == 0)
