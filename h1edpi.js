@@ -1,6 +1,7 @@
 var __tmp = function(){
 var h1e = {}
 h1edpi_module = h1e
+var fl = Math.floor
 
 /* H1edpi */
 
@@ -90,7 +91,8 @@ h1e.get_frame_count = function(sprite_name){
 
 h1e.draw_rect = function(x, y, w, h, fillStyle){
 	h1e.ctx.fillStyle = fillStyle
-	h1e.ctx.fillRect(x*h1e.scale, y*h1e.scale, w*h1e.scale, h*h1e.scale)
+	var s = h1e.scale
+	h1e.ctx.fillRect(fl(x*s), fl(y*s), fl(w*s), fl(h*s))
 }
 
 h1e.draw_sprite = function(x, y, sprite_name, opts){
@@ -136,8 +138,8 @@ h1e.draw_sprite = function(x, y, sprite_name, opts){
 		dh = opts.cut[3]
 	}
 	var s = h1e.scale
-	h1e.ctx.drawImage(img, sx*s, sy*s, sw*s, sh*s, dx*s, dy*s, dw*s, dh*s)
-	//h1e.ctx.drawImage(img, dx, dy)
+	h1e.ctx.drawImage(img, fl(sx*s), fl(sy*s), fl(sw*s), fl(sh*s),
+			fl(dx*s), fl(dy*s), fl(dw*s), fl(dh*s))
 }
 
 h1e.push_section = function(section){
