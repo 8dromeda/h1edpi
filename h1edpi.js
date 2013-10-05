@@ -12,6 +12,9 @@ h1e.w = undefined
 h1e.h = undefined
 h1e.fps = undefined
 h1e.ctx = undefined
+h1e.scale = 1
+h1e.off_x = 0
+h1e.off_y = 0
 h1e.started = false
 h1e.sprites = {}
 h1e.sections = []
@@ -119,7 +122,10 @@ h1e.draw_sprite = function(x, y, sprite_name, opts){
 	} else {
 		tc = [0, 0, img.width/h1e.scale, img.height/h1e.scale]
 	}
-	if(sprite.off){
+	if(opts.off){
+		x -= opts.off[0]
+		y -= opts.off[1]
+	} else if(sprite.off){
 		x -= sprite.off[0]
 		y -= sprite.off[1]
 	}
@@ -223,10 +229,12 @@ h1e.start = function(){
 	})
 
 	document.addEventListener('keydown', function(e){
-		h1e.keys[e.keyCode] = true
-		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.event(h1e, {type:"keydown", key:e.keyCode}))
-			section._h1e_updated = true
+		if(!h1e.keys[e.keyCode]){ // Keydown repeats at least on Chromium 21
+			h1e.keys[e.keyCode] = true
+			var section = h1e.sections[h1e.sections.length-1]
+			if(section && section.event(h1e, {type:"keydown", key:e.keyCode}))
+				section._h1e_updated = true
+		}
 	})
 	document.addEventListener('keyup', function(e){
 		h1e.keys[e.keyCode] = false
@@ -281,13 +289,31 @@ h1e.start = function(){
 		}
 	}
 
+	var last_update_time = Date.now()
 	function update(){
 		setTimeout(update, 1000/h1e.fps)
 		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.update){
-			var r = section.update(h1e)
-			if(r) section._h1e_updated = true
+		var now = Date.now()
+		var slop = 15
+		var slip = 5
+		var frames = 0
+		var max_skip = Math.round(h1e.fps / 15)
+		while(now > last_update_time + 1000/h1e.fps - slop && frames < max_skip)
+		{
+			if(section && section.update){
+				var r = section.update(h1e)
+				if(r) section._h1e_updated = true
+			}
+			last_update_time += 1000/h1e.fps
+			if(last_update_time > now - slip)
+				last_update_time = now
+			frames++
+			slop = -5
 		}
+		// If maximum frames were used, let it slip
+		if(frames == max_skip)
+			last_update_time = now
+		//console.log("h1edpi: Frames in update: "+frames)
 	}
 	update()
 
