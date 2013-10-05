@@ -248,6 +248,7 @@ h1e.start = function(){
 	window.onblur = function(e){
 		h1e.has_focus = false
 	}
+
 	document.addEventListener('mousemove', function(e){
 		var r = h1e.canvas.getBoundingClientRect()
 		h1e.mouse.x = Math.floor((e.clientX - r.left - h1e.off_x) / h1e.scale)
@@ -275,6 +276,52 @@ h1e.start = function(){
 			h1e.mouse.buttons["middle"] = false
 		if(e.button == 2)
 			h1e.mouse.buttons["right"] = false
+		var section = h1e.sections[h1e.sections.length-1]
+		if(section && section.event(h1e, {type:"mouseup"}))
+			section._h1e_updated = true
+	})
+
+	document.addEventListener('touchmove', function(e0){
+		e0.preventDefault()
+		var e = e0.changedTouches[0]
+		var r = h1e.canvas.getBoundingClientRect()
+		h1e.mouse.x = Math.floor((e.clientX - r.left - h1e.off_x) / h1e.scale)
+		h1e.mouse.y = Math.floor((e.clientY - r.top - h1e.off_y) / h1e.scale)
+		h1e.mouse.out = false
+	})
+	document.addEventListener('touchcancel', function(e0){
+		var e = e0.changedTouches[0]
+		h1e.mouse.buttons["touch"] = false
+		h1e.mouse.out = true
+	})
+	document.addEventListener('touchleave', function(e0){
+		var e = e0.changedTouches[0]
+		h1e.mouse.buttons["touch"] = false
+		h1e.mouse.out = true
+	})
+	document.addEventListener('touchstart', function(e0){
+		var e = e0.changedTouches[0]
+		h1e.mouse.buttons["touch"] = true
+		var r = h1e.canvas.getBoundingClientRect()
+		h1e.mouse.x = Math.floor((e.clientX - r.left - h1e.off_x) / h1e.scale)
+		h1e.mouse.y = Math.floor((e.clientY - r.top - h1e.off_y) / h1e.scale)
+		h1e.mouse.out = false
+		var section = h1e.sections[h1e.sections.length-1]
+		if(section && section.event(h1e, {type:"mousedown"}))
+			section._h1e_updated = true
+	})
+	document.addEventListener('touchend', function(e0){
+		e0.preventDefault()
+		var e = e0.changedTouches[0]
+		h1e.mouse.buttons["touch"] = false
+		var section = h1e.sections[h1e.sections.length-1]
+		if(section && section.event(h1e, {type:"mouseup"}))
+			section._h1e_updated = true
+	})
+	h1e.canvas.addEventListener('touchend', function(e0){
+		e0.preventDefault()
+		var e = e0.changedTouches[0]
+		h1e.mouse.buttons["touch"] = false
 		var section = h1e.sections[h1e.sections.length-1]
 		if(section && section.event(h1e, {type:"mouseup"}))
 			section._h1e_updated = true
