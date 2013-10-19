@@ -122,7 +122,7 @@ h1e.draw_sprite = function(x, y, sprite_name, opts){
 	} else {
 		tc = [0, 0, img.width/h1e.scale, img.height/h1e.scale]
 	}
-	if(opts.off){
+	if(opts && opts.off){
 		x -= opts.off[0]
 		y -= opts.off[1]
 	} else if(sprite.off){
@@ -146,8 +146,12 @@ h1e.draw_sprite = function(x, y, sprite_name, opts){
 		dh = opts.cut[3]
 	}
 	var s = h1e.scale
+	if(opts && opts.alpha !== undefined)
+		h1e.ctx.globalAlpha = opts.alpha
 	h1e.ctx.drawImage(img, fl(sx*s), fl(sy*s), fl(sw*s), fl(sh*s),
 			fl(dx*s), fl(dy*s), fl(dw*s), fl(dh*s))
+	if(opts && opts.alpha !== undefined)
+		h1e.ctx.globalAlpha = 1.0
 }
 
 h1e.push_section = function(section){
@@ -159,10 +163,14 @@ h1e.push_section = function(section){
 
 h1e.remove_section = function(section){
 	var i = h1e.sections.indexOf(section)
-	if(i != -1)
+	if(i != -1){
 		h1e.sections.splice(i, 1)
-	else
+		var section = h1e.sections[h1e.sections.length-1]
+		if(section)
+			section._h1e_updated = true
+	} else {
 		throw new Error("h1e.remove_section: Section not found")
+	}
 }
 
 h1e.keyname_to_keycodes = function(keyname){
@@ -173,6 +181,10 @@ h1e.keyname_to_keycodes = function(keyname){
 		down: [40],
 		space: [32],
 		escape: [27],
+		enter: [13],
+		pageup: [33],
+		pagedown: [34],
+		backspace: [8],
 	}
 	if(keycodes[keyname])
 		return keycodes[keyname]
@@ -232,14 +244,28 @@ h1e.start = function(){
 		if(!h1e.keys[e.keyCode]){ // Keydown repeats at least on Chromium 21
 			h1e.keys[e.keyCode] = true
 			var section = h1e.sections[h1e.sections.length-1]
-			if(section && section.event(h1e, {type:"keydown", key:e.keyCode}))
+			if(section && section.event && section.event(h1e, {type:"keydown", key:e.keyCode}))
 				section._h1e_updated = true
 		}
+		var section = h1e.sections[h1e.sections.length-1]
+		if(section && section.event && section.event(h1e, {type:"keydown_repeatable",
+				key:e.keyCode}))
+			section._h1e_updated = true
 	})
 	document.addEventListener('keyup', function(e){
 		h1e.keys[e.keyCode] = false
 		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.event(h1e, {type:"keyup", key:e.keyCode}))
+		if(section && section.event && section.event(h1e, {type:"keyup", key:e.keyCode}))
+			section._h1e_updated = true
+	})
+	document.addEventListener('keypress', function(e){
+		var section = h1e.sections[h1e.sections.length-1]
+		if(e.char !== undefined)
+			var char = e.char
+		else
+			var char = String.fromCharCode(e.charCode)
+		if(section && section.event && section.event(h1e, {type:"keypress", key:e.keyCode,
+				char:char}))
 			section._h1e_updated = true
 	})
 	window.onfocus = function(e){
@@ -266,7 +292,7 @@ h1e.start = function(){
 		if(e.button == 2)
 			h1e.mouse.buttons["right"] = true
 		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.event(h1e, {type:"mousedown"}))
+		if(section && section.event && section.event(h1e, {type:"mousedown"}))
 			section._h1e_updated = true
 	})
 	document.addEventListener('mouseup', function(e){
@@ -277,7 +303,7 @@ h1e.start = function(){
 		if(e.button == 2)
 			h1e.mouse.buttons["right"] = false
 		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.event(h1e, {type:"mouseup"}))
+		if(section && section.event && section.event(h1e, {type:"mouseup"}))
 			section._h1e_updated = true
 	})
 
@@ -307,7 +333,7 @@ h1e.start = function(){
 		h1e.mouse.y = Math.floor((e.clientY - r.top - h1e.off_y) / h1e.scale)
 		h1e.mouse.out = false
 		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.event(h1e, {type:"mousedown"}))
+		if(section && section.event && section.event(h1e, {type:"mousedown"}))
 			section._h1e_updated = true
 	})
 	document.addEventListener('touchend', function(e0){
@@ -315,7 +341,7 @@ h1e.start = function(){
 		var e = e0.changedTouches[0]
 		h1e.mouse.buttons["touch"] = false
 		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.event(h1e, {type:"mouseup"}))
+		if(section && section.event && section.event(h1e, {type:"mouseup"}))
 			section._h1e_updated = true
 	})
 	h1e.canvas.addEventListener('touchend', function(e0){
@@ -323,7 +349,7 @@ h1e.start = function(){
 		var e = e0.changedTouches[0]
 		h1e.mouse.buttons["touch"] = false
 		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.event(h1e, {type:"mouseup"}))
+		if(section && section.event && section.event(h1e, {type:"mouseup"}))
 			section._h1e_updated = true
 	})
 
