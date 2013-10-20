@@ -259,11 +259,13 @@ h1e.start = function(){
 			section._h1e_updated = true
 	})
 	document.addEventListener('keypress', function(e){
-		var section = h1e.sections[h1e.sections.length-1]
 		if(e.char !== undefined)
 			var char = e.char
-		else
+		else if(e.charCode >= 32)
 			var char = String.fromCharCode(e.charCode)
+		else
+			return
+		var section = h1e.sections[h1e.sections.length-1]
 		if(section && section.event && section.event(h1e, {type:"keypress", key:e.keyCode,
 				char:char}))
 			section._h1e_updated = true
