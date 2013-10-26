@@ -244,18 +244,21 @@ h1e.start = function(){
 		if(!h1e.keys[e.keyCode]){ // Keydown repeats at least on Chromium 21
 			h1e.keys[e.keyCode] = true
 			var section = h1e.sections[h1e.sections.length-1]
-			if(section && section.event && section.event(h1e, {type:"keydown", key:e.keyCode}))
+			if(section && section.event &&
+					section.event(h1e, {type:"keydown", key:e.keyCode}))
 				section._h1e_updated = true
 		}
 		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.event && section.event(h1e, {type:"keydown_repeatable",
+		if(section && section.event &&
+				section.event(h1e, {type:"keydown_repeatable",
 				key:e.keyCode}))
 			section._h1e_updated = true
 	})
 	document.addEventListener('keyup', function(e){
 		h1e.keys[e.keyCode] = false
 		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.event && section.event(h1e, {type:"keyup", key:e.keyCode}))
+		if(section && section.event &&
+				section.event(h1e, {type:"keyup", key:e.keyCode}))
 			section._h1e_updated = true
 	})
 	document.addEventListener('keypress', function(e){
@@ -266,8 +269,8 @@ h1e.start = function(){
 		else
 			return
 		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.event && section.event(h1e, {type:"keypress", key:e.keyCode,
-				char:char}))
+		if(section && section.event &&
+				section.event(h1e, {type:"keypress", key:e.keyCode, char:char}))
 			section._h1e_updated = true
 	})
 	window.onfocus = function(e){
