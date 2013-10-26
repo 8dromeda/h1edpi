@@ -270,8 +270,10 @@ h1e.start = function(){
 			return
 		var section = h1e.sections[h1e.sections.length-1]
 		if(section && section.event &&
-				section.event(h1e, {type:"keypress", key:e.keyCode, char:char}))
+				section.event(h1e, {type:"keypress", key:e.keyCode, char:char})){
 			section._h1e_updated = true
+			e.preventDefault()
+		}
 	})
 	window.onfocus = function(e){
 		h1e.has_focus = true
