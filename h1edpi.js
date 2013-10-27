@@ -13,6 +13,10 @@ h1e.h = undefined
 h1e.fps = undefined
 h1e.ctx = undefined
 h1e.scale = 1
+h1e.native_scaling = false
+h1e.native_scale = 1
+h1e.native_w = 0
+h1e.native_h = 0
 h1e.off_x = 0
 h1e.off_y = 0
 h1e.started = false
@@ -35,32 +39,59 @@ h1e.mouse = {
 h1e.nofocus_time = 0
 h1e.nofocus_framedrop = 0
 
-h1e.init = function(canvas, w, h, fps){
+h1e.init = function(canvas, w, h, fps, opts){
 	h1e.checkdom(canvas)
 	h1e.checkinteger(w)
 	h1e.checkinteger(h)
 	h1e.checkinteger(fps)
+	opts = opts || {}
 
 	h1e.canvas = canvas
 	h1e.w = w
 	h1e.h = h
 	h1e.fps = fps
 
+	h1e.detect_native_scaling(opts)
+
 	h1e.update_scale()
 }
 
 h1e.resize_canvas = function(w, h){
-	$("#main_canvas")[0].width = Math.floor((w)/12)*12
-	$("#main_canvas")[0].height = Math.floor((h)/12)*12
+	if(h1e.native_scaling){
+		// Find the largest fitting scale
+		var scale = 1
+		for(;;){
+			if(h1e.w*(scale+1) > w || h1e.h*(scale+1) > h)
+				break;
+			scale += 1
+		}
+		// We'll use this scale for native scaling
+		h1e.native_scale = scale
+		// Calculate the largest fitting unscaled canvas size
+		h1e.native_w = Math.floor(w / scale)
+		h1e.native_h = Math.floor(h / scale)
+		$("#main_canvas")[0].width = h1e.native_w
+		$("#main_canvas")[0].height = h1e.native_h
+		$("#main_canvas")[0].style.width  = ""+(h1e.native_w*scale)+"px"
+		$("#main_canvas")[0].style.height = ""+(h1e.native_h*scale)+"px"
+	} else {
+		$("#main_canvas")[0].width = Math.floor((w)/12)*12
+		$("#main_canvas")[0].height = Math.floor((h)/12)*12
+	}
 	h1e.update_scale()
 }
 
 h1e.update_scale = function(){
 	var canvas = h1e.canvas
-	h1e.scale = Math.floor(Math.min(canvas.width/h1e.w, canvas.height/h1e.h))
-	h1e.off_x = (canvas.width  - h1e.w*h1e.scale) / 2
-	h1e.off_y = (canvas.height - h1e.h*h1e.scale) / 2
-
+	if(h1e.native_scaling){
+		h1e.scale = 1
+		h1e.off_x = Math.floor((h1e.native_w - h1e.w) / 2)
+		h1e.off_y = Math.floor((h1e.native_h - h1e.h) / 2)
+	} else {
+		h1e.scale = Math.floor(Math.min(canvas.width/h1e.w, canvas.height/h1e.h))
+		h1e.off_x = (canvas.width  - h1e.w*h1e.scale) / 2
+		h1e.off_y = (canvas.height - h1e.h*h1e.scale) / 2
+	}
 	var section = h1e.sections[h1e.sections.length-1]
 	if(section)
 		section._h1e_updated = true
@@ -186,6 +217,8 @@ h1e.keyname_to_keycodes = function(keyname){
 		pagedown: [34],
 		backspace: [8],
 		shift: [16],
+		"+": [187],
+		"-": [189],
 	}
 	if(keycodes[keyname])
 		return keycodes[keyname]
@@ -369,6 +402,8 @@ h1e.start = function(){
 
 	h1e.ctx = h1e.canvas.getContext("2d")
 	h1e.ctx.imageSmoothingEnabled = false
+	h1e.ctx.webkitImageSmoothingEnabled = false
+	h1e.ctx.mozImageSmoothingEnabled = false
 
 	function draw_bg(){
 		if(h1e.bgstyle){
@@ -471,7 +506,8 @@ h1e.get_sprite_image = function(sprite){
 		}
 		return sprite.cache_img
 	}
-	var img = h1e.get_image(sprite.img_name+"|scale="+h1e.scale)
+	var img = h1e.get_image(sprite.img_name+
+			(h1e.scale == 1 ? "" : "|scale="+h1e.scale))
 	if(!img){
 		h1e.num_sprites_incomplete++
 		if(sprite.draw_iteration < 3)
@@ -526,7 +562,7 @@ h1e.get_image = function(name, base){
 		next = name
 	} else {
 		var m = /(.+?)\|(.+)/.exec(name)
-		var first = m[1]
+		var first = m ? m[1] : name
 		//console.log("first:", m)
 		img = h1e.preload.images[first]
 		if(!img || !img.complete){
@@ -534,6 +570,8 @@ h1e.get_image = function(name, base){
 			h1e.error_cooldown = ERROR_COOLDOWN
 			return undefined
 		}
+		if(m === null)
+			return img
 		next = m[2]
 	}
 
@@ -665,24 +703,20 @@ h1e.scale_image = function(img, scale)
 	var im = ctx.getImageData(0, 0, w, h)
 	var im2 = ctx2.getImageData(0, 0, w2, h2)
 	h1e.checkobject(im2)
+	var da = im.data // Detach from DOM
+	var da2 = im2.data // Detach from DOM
 	for(var y=0; y<h; y++){
 		for(var x=0; x<w; x++){
 			for(var y2=0; y2<scale; y2++){
 				for(var x2=0; x2<scale; x2++){
-					im2.data[((y*s+y2)*w2+x*s+x2)*4+0] = im.data[(y*w+x)*4+0]
-					im2.data[((y*s+y2)*w2+x*s+x2)*4+1] = im.data[(y*w+x)*4+1]
-					im2.data[((y*s+y2)*w2+x*s+x2)*4+2] = im.data[(y*w+x)*4+2]
-					im2.data[((y*s+y2)*w2+x*s+x2)*4+3] = im.data[(y*w+x)*4+3]
+					da2[((y*s+y2)*w2+x*s+x2)*4+0] = da[(y*w+x)*4+0]
+					da2[((y*s+y2)*w2+x*s+x2)*4+1] = da[(y*w+x)*4+1]
+					da2[((y*s+y2)*w2+x*s+x2)*4+2] = da[(y*w+x)*4+2]
+					da2[((y*s+y2)*w2+x*s+x2)*4+3] = da[(y*w+x)*4+3]
 				}
 			}
 		}
 	}
-	/*for(var i=0; i<w2*h2; i++){
-		im2.data[i*4+0] = 255
-		im2.data[i*4+1] = 0
-		im2.data[i*4+2] = 150
-		im2.data[i*4+3] = 255
-	}*/
 	ctx2.putImageData(im2, 0, 0)
 
 	var dataurl = canvas2.toDataURL()
@@ -734,11 +768,12 @@ h1e.mask_image = function(img, mask)
 	ctx.drawImage(img, 0, 0)
 
 	var im = ctx.getImageData(0, 0, w, h)
+	var da = im.data // Detach from DOM
 	for(var i=0; i<w*h; i++){
-		if(im.data[i*4+3] == 0)
+		if(da[i*4+3] == 0)
 			continue
-		if(mask.eqArr(im.data, i*4))
-			im.data[i*4+3] = 0
+		if(mask.eqArr(da, i*4))
+			da[i*4+3] = 0
 	}
 	ctx.putImageData(im, 0, 0)
 
@@ -763,11 +798,12 @@ h1e.recolor_image = function(img, from, to)
 	ctx.drawImage(img, 0, 0)
 
 	var im = ctx.getImageData(0, 0, w, h)
+	var da = im.data // Detach from DOM
 	for(var i=0; i<w*h; i++){
-		if(im.data[i*4+3] == 0)
+		if(da[i*4+3] == 0)
 			continue
-		if(from.eqArr(im.data, i*4))
-			to.setArr(im.data, i*4)
+		if(from.eqArr(da, i*4))
+			to.setArr(da, i*4)
 	}
 	ctx.putImageData(im, 0, 0)
 
@@ -775,6 +811,45 @@ h1e.recolor_image = function(img, from, to)
 	var img2 = new Image()
 	img2.src = dataurl
 	return img2
+}
+
+/* Browser feature detection */
+
+// Options: native_scaling = true/false/"lowend"/undefined
+h1e.detect_native_scaling = function(opts){
+	// Figure out whether to use native scaling
+	var use_always = (opts && opts.native_scaling === true)
+	var use_on_lowend = (opts && opts.native_scaling === "lowend")
+	var use_on_auto = (opts && opts.native_scaling === undefined)
+
+	var native_scaling_wanted = false
+	if(!native_scaling_wanted && use_always){
+		native_scaling_wanted = true
+	}
+	// Old firefox
+	if(!native_scaling_wanted && use_on_lowend){
+		var ua = navigator.userAgent
+		if(ua.indexOf('Firefox') != -1 &&
+				parseFloat(ua.substring(ua.indexOf('Firefox') + 8)) < 22){
+			console.log("Old firefox; using native scaling for speed")
+			native_scaling_wanted = true
+		}
+	}
+	// Some very old browsers
+	if(!native_scaling_wanted && (use_on_lowend || use_on_auto)){
+		// Not implemented
+	}
+	if(native_scaling_wanted){
+		// Old chrome doesn't support ctx.imageSmoothingEnabled
+		var supported = true
+		var ua = navigator.userAgent
+		if(ua.indexOf('Chrome') != -1 && parseFloat(ua.substring(
+				ua.indexOf('Chrome') + 7).split(' ')[0]) < 24){
+			console.log("Old chrome; native scaling not supported.")
+			supported = false
+		}
+		h1e.native_scaling = supported
+	}
 }
 
 /* Misc. */
