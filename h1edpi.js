@@ -185,6 +185,7 @@ h1e.keyname_to_keycodes = function(keyname){
 		pageup: [33],
 		pagedown: [34],
 		backspace: [8],
+		shift: [16],
 	}
 	if(keycodes[keyname])
 		return keycodes[keyname]
