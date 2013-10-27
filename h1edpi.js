@@ -245,21 +245,27 @@ h1e.start = function(){
 			h1e.keys[e.keyCode] = true
 			var section = h1e.sections[h1e.sections.length-1]
 			if(section && section.event &&
-					section.event(h1e, {type:"keydown", key:e.keyCode}))
+					section.event(h1e, {type:"keydown", key:e.keyCode})){
 				section._h1e_updated = true
+				e.preventDefault()
+			}
 		}
 		var section = h1e.sections[h1e.sections.length-1]
 		if(section && section.event &&
 				section.event(h1e, {type:"keydown_repeatable",
-				key:e.keyCode}))
+				key:e.keyCode})){
 			section._h1e_updated = true
+			e.preventDefault()
+		}
 	})
 	document.addEventListener('keyup', function(e){
 		h1e.keys[e.keyCode] = false
 		var section = h1e.sections[h1e.sections.length-1]
 		if(section && section.event &&
-				section.event(h1e, {type:"keyup", key:e.keyCode}))
+				section.event(h1e, {type:"keyup", key:e.keyCode})){
 			section._h1e_updated = true
+			e.preventDefault()
+		}
 	})
 	document.addEventListener('keypress', function(e){
 		if(e.char !== undefined)
