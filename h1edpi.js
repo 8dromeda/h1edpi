@@ -204,6 +204,10 @@ h1e.remove_section = function(section){
 	}
 }
 
+h1e.top_section = function(){
+	return h1e.sections[h1e.sections.length-1]
+}
+
 h1e.keyname_to_keycodes = function(keyname){
 	var keycodes = {
 		left: [37],
@@ -217,8 +221,8 @@ h1e.keyname_to_keycodes = function(keyname){
 		pagedown: [34],
 		backspace: [8],
 		shift: [16],
-		"+": [187],
-		"-": [189],
+		"+": [187, 171, 107],
+		"-": [189, 173, 109],
 	}
 	if(keycodes[keyname])
 		return keycodes[keyname]
@@ -275,16 +279,15 @@ h1e.start = function(){
 	})
 
 	document.addEventListener('keydown', function(e){
+		var section = h1e.sections[h1e.sections.length-1]
 		if(!h1e.keys[e.keyCode]){ // Keydown repeats at least on Chromium 21
 			h1e.keys[e.keyCode] = true
-			var section = h1e.sections[h1e.sections.length-1]
 			if(section && section.event &&
 					section.event(h1e, {type:"keydown", key:e.keyCode})){
 				section._h1e_updated = true
 				e.preventDefault()
 			}
 		}
-		var section = h1e.sections[h1e.sections.length-1]
 		if(section && section.event &&
 				section.event(h1e, {type:"keydown_repeatable",
 				key:e.keyCode})){
