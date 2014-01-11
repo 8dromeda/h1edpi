@@ -177,12 +177,13 @@ h1e.draw_sprite = function(x, y, sprite_name, opts){
 		dh = opts.cut[3]
 	}
 	var s = h1e.scale
+	var ctx = (opts && opts.ctx) ? opts.ctx : h1e.ctx
 	if(opts && opts.alpha !== undefined)
-		h1e.ctx.globalAlpha = opts.alpha
-	h1e.ctx.drawImage(img, fl(sx*s), fl(sy*s), fl(sw*s), fl(sh*s),
+		ctx.globalAlpha = opts.alpha
+	ctx.drawImage(img, fl(sx*s), fl(sy*s), fl(sw*s), fl(sh*s),
 			fl(dx*s), fl(dy*s), fl(dw*s), fl(dh*s))
 	if(opts && opts.alpha !== undefined)
-		h1e.ctx.globalAlpha = 1.0
+		ctx.globalAlpha = 1.0
 }
 
 h1e.push_section = function(section){
