@@ -415,11 +415,40 @@ h1e.start = function(){
 		}
 	}
 
+	var draw_counter = 0 // Counts how many draws happened in update
+	var draw_counter_average = 0.0
+	var draw_does_update = false // Enabled if drawing isn't too slow
 	var last_update_time = Date.now()
 	function update(){
 		setTimeout(update, 1000/h1e.fps)
+
+		// Analyze and fix synchronization with drawing
+		//console.log("draw_counter="+draw_counter)
+		draw_counter_average = draw_counter * 0.01 + draw_counter_average * 0.99
+		if(draw_counter_average > 0.9 && draw_counter_average < 1.1){
+			if(!draw_does_update){
+				console.log("Moving updates to draw callback")
+				draw_does_update = true
+			}
+			if(draw_counter != Math.round(draw_counter_average)){
+				//console.log("uncommon draw_counter: "+draw_counter)
+			}
+		} else {
+			if(draw_does_update){
+				console.log("Moving updates to update callback")
+				draw_does_update = false
+			}
+		}
+		draw_counter = 0
+
 		var section = h1e.sections[h1e.sections.length-1]
 		var now = Date.now()
+		if(draw_does_update){
+			last_update_time = now
+			return
+		}
+
+		// Do the actual update(s)
 		var slop = 15
 		var slip = 5
 		var frames = 0
@@ -446,19 +475,20 @@ h1e.start = function(){
 	var last_has_focus = true
 	function draw(){
 		window.requestAnimationFrameCompatible(draw)
+		draw_counter++
 
 		if(h1e.error_cooldown){
 			h1e.error_cooldown--
 			return
 		}
 
+		var section = h1e.sections[h1e.sections.length-1]
+
 		h1e.ctx.save()
 		h1e.ctx.beginPath()
 		h1e.ctx.rect(h1e.off_x, h1e.off_y, h1e.scale*h1e.w, h1e.scale*h1e.h)
 		h1e.ctx.clip()
 		h1e.ctx.translate(h1e.off_x, h1e.off_y)
-
-		var section = h1e.sections[h1e.sections.length-1]
 
 		if(h1e.preloading){
 			draw_bg()
@@ -496,6 +526,15 @@ h1e.start = function(){
 			sprite.draw_iteration++
 		}
 		h1e.num_sprites_incomplete = 0
+
+		// Do update after drawing, because that way there is usually enough
+		// time for this update before rendering
+		if(draw_does_update){
+			if(section && section.update){
+				var r = section.update(h1e)
+				if(r) section._h1e_updated = true
+			}
+		}
 	}
 	window.requestAnimationFrameCompatible(draw)
 }
