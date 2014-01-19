@@ -419,29 +419,41 @@ h1e.start = function(){
 	var draw_counter_average = 0.0
 	var frames_per_update_average = 0.0
 	var draw_does_update = false // Enabled if drawing isn't too slow
-	var last_update_time = Date.now()
-	function update(){
-		setTimeout(update, 1000/h1e.fps)
-
+	function slow_update(){
+		setTimeout(slow_update, 1000/h1e.fps*10)
 		// Analyze and fix synchronization with drawing
+		draw_counter_average = draw_counter * 0.1 + draw_counter_average * 0.9
 		//console.log("draw_counter="+draw_counter)
-		draw_counter_average = draw_counter * 0.01 + draw_counter_average * 0.99
-		if(draw_counter_average > 0.9 && draw_counter_average < 1.1 &&
+		//console.log("draw_counter_average="+draw_counter_average)
+		//console.log("frames_per_update_average="+frames_per_update_average)
+		if(draw_counter_average > 0.9*10 && draw_counter_average < 1.1*10 &&
 				frames_per_update_average > 0.9 && frames_per_update_average < 1.1){
 			if(!draw_does_update){
 				console.log("Moving updates to draw callback")
 				draw_does_update = true
+				draw_counter_average = 10 // Reset to stabilize
+				frames_per_update_average = 1.0 // Not updated in draw callback
 			}
 			if(draw_counter != Math.round(draw_counter_average)){
 				//console.log("uncommon draw_counter: "+draw_counter)
 			}
+		} else if(draw_counter_average > 0.8*10 && draw_counter_average < 1.2*10 &&
+				frames_per_update_average > 0.8 && frames_per_update_average < 1.2){
+			// Threshold not passed to any direction
 		} else {
 			if(draw_does_update){
+				console.log("draw_counter_average="+draw_counter_average)
+				console.log("frames_per_update_average="+frames_per_update_average)
 				console.log("Moving updates to update callback")
 				draw_does_update = false
 			}
 		}
 		draw_counter = 0
+	}
+	slow_update()
+	var last_update_time = Date.now()
+	function update(){
+		setTimeout(update, 1000/h1e.fps)
 
 		var section = h1e.sections[h1e.sections.length-1]
 		var now = Date.now()
@@ -538,8 +550,6 @@ h1e.start = function(){
 				if(r) section._h1e_updated = true
 			}
 			var now = Date.now()
-			var time_per_update = now - last_update_time
-			frames_per_update_average = 1.0 / time_per_update
 			last_update_time = now
 		}
 	}
