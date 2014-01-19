@@ -537,6 +537,10 @@ h1e.start = function(){
 				var r = section.update(h1e)
 				if(r) section._h1e_updated = true
 			}
+			var now = Date.now()
+			var time_per_update = now - last_update_time
+			frames_per_update_average = 1.0 / time_per_update
+			last_update_time = now
 		}
 	}
 	window.requestAnimationFrameCompatible(draw)
