@@ -417,6 +417,7 @@ h1e.start = function(){
 
 	var draw_counter = 0 // Counts how many draws happened in update
 	var draw_counter_average = 0.0
+	var frames_per_update_average = 0.0
 	var draw_does_update = false // Enabled if drawing isn't too slow
 	var last_update_time = Date.now()
 	function update(){
@@ -425,7 +426,8 @@ h1e.start = function(){
 		// Analyze and fix synchronization with drawing
 		//console.log("draw_counter="+draw_counter)
 		draw_counter_average = draw_counter * 0.01 + draw_counter_average * 0.99
-		if(draw_counter_average > 0.9 && draw_counter_average < 1.1){
+		if(draw_counter_average > 0.9 && draw_counter_average < 1.1 &&
+				frames_per_update_average > 0.9 && frames_per_update_average < 1.1){
 			if(!draw_does_update){
 				console.log("Moving updates to draw callback")
 				draw_does_update = true
@@ -469,6 +471,7 @@ h1e.start = function(){
 		if(frames == max_skip)
 			last_update_time = now
 		//console.log("h1edpi: Frames in update: "+frames)
+		frames_per_update_average = frames*0.01 + frames_per_update_average*0.99
 	}
 	update()
 
