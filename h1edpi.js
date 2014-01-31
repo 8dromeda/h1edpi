@@ -415,21 +415,30 @@ h1e.start = function(){
 		}
 	}
 
-	var draw_counter = 0 // Counts how many draws happened in update
+	var draw_counter = 10 // Counts how many draws happened in update
 	var draw_counter_average = 0.0
+	var draw_counter_min = 10.0
 	var frames_per_update_average = 0.0
 	var draw_does_update = false // Enabled if drawing isn't too slow
 	function slow_update(){
 		setTimeout(slow_update, 1000/h1e.fps*10)
 		// Analyze and fix synchronization with drawing
 		draw_counter_average = draw_counter * 0.1 + draw_counter_average * 0.9
+		draw_counter_min += 0.1
+		if(draw_counter < draw_counter_min)
+			draw_counter_min = Math.max(draw_counter, 6.0)
 		//console.log("draw_counter="+draw_counter)
 		//console.log("draw_counter_average="+draw_counter_average)
+		//console.log("draw_counter_min="+draw_counter_min)
 		//console.log("frames_per_update_average="+frames_per_update_average)
 		if(draw_counter_average > 0.9*10 && draw_counter_average < 1.1*10 &&
-				frames_per_update_average > 0.9 && frames_per_update_average < 1.1){
+				frames_per_update_average > 0.9 && frames_per_update_average < 1.1 &&
+				draw_counter_min >= 9){
 			if(!draw_does_update){
-				console.log("Moving updates to draw callback")
+				console.log("Moving updates to draw callback "+
+						"(dca="+h1e.pad(draw_counter_average, 2)+", "+
+						"fpua="+h1e.pad(frames_per_update_average, 2)+", "+
+						"dcm="+h1e.pad(draw_counter_min, 2)+")")
 				draw_does_update = true
 				draw_counter_average = 10 // Reset to stabilize
 				frames_per_update_average = 1.0 // Not updated in draw callback
@@ -438,13 +447,17 @@ h1e.start = function(){
 				//console.log("uncommon draw_counter: "+draw_counter)
 			}
 		} else if(draw_counter_average > 0.8*10 && draw_counter_average < 1.2*10 &&
-				frames_per_update_average > 0.8 && frames_per_update_average < 1.2){
+				frames_per_update_average > 0.8 && frames_per_update_average < 1.2 &&
+				draw_counter_min >= 9){
 			// Threshold not passed to any direction
 		} else {
 			if(draw_does_update){
-				console.log("draw_counter_average="+draw_counter_average)
-				console.log("frames_per_update_average="+frames_per_update_average)
-				console.log("Moving updates to update callback")
+				//console.log("draw_counter_average="+draw_counter_average)
+				//console.log("frames_per_update_average="+frames_per_update_average)
+				console.log("Moving updates to update callback "+
+						"(dca="+h1e.pad(draw_counter_average, 2)+", "+
+						"fpua="+h1e.pad(frames_per_update_average, 2)+", "+
+						"dcm="+h1e.pad(draw_counter_min, 2)+")")
 				draw_does_update = false
 			}
 		}
@@ -1009,6 +1022,17 @@ h1e.dump = function(arr, dumped_objects){
 			dumped_text = ""+arr+" ("+typeof(arr)+")"
 	}
 	return dumped_text
+}
+
+h1e.pad = function(n, d, w, z){ // number, precision, width, padchar
+	w = w || 1
+	if(typeof(n) == "number"){
+		dn = Math.pow(10, d||0)
+		n = Math.round(n*dn)/dn
+	}
+	z = z || ' ';
+	n = n + '';
+	return n.length >= w ? n : new Array(w - n.length + 1).join(z) + n;
 }
 
 }()
