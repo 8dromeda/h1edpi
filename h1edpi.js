@@ -56,7 +56,7 @@ h1e.init = function(canvas, w, h, fps, opts){
 	h1e.update_scale()
 }
 
-h1e.resize_canvas = function(w, h){
+h1e.resize_canvas = function(w, h, direct){
 	if(h1e.native_scaling){
 		// Find the largest fitting scale
 		var scale = 1
@@ -75,8 +75,15 @@ h1e.resize_canvas = function(w, h){
 		$("#main_canvas")[0].style.width  = ""+(h1e.native_w*scale)+"px"
 		$("#main_canvas")[0].style.height = ""+(h1e.native_h*scale)+"px"
 	} else {
-		$("#main_canvas")[0].width = Math.floor((w)/12)*12
-		$("#main_canvas")[0].height = Math.floor((h)/12)*12
+		if(direct){
+			// Caller makes sure w and h are multiples of the scale to be
+			// determined
+			$("#main_canvas")[0].width = w
+			$("#main_canvas")[0].height = h
+		} else {
+			$("#main_canvas")[0].width = Math.floor((w)/12)*12
+			$("#main_canvas")[0].height = Math.floor((h)/12)*12
+		}
 	}
 	h1e.update_scale()
 }
@@ -89,6 +96,8 @@ h1e.update_scale = function(){
 		h1e.off_y = Math.floor((h1e.native_h - h1e.h) / 2)
 	} else {
 		h1e.scale = Math.floor(Math.min(canvas.width/h1e.w, canvas.height/h1e.h))
+		if(h1e.scale < 1)
+			h1e.scale = 1
 		h1e.off_x = (canvas.width  - h1e.w*h1e.scale) / 2
 		h1e.off_y = (canvas.height - h1e.h*h1e.scale) / 2
 	}
