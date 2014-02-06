@@ -5,6 +5,19 @@ var fl = Math.floor
 
 /* H1edpi */
 
+/*
+DOCUMENTATION
+
+Section:
+- draw(h1e)
+- update(h1e)
+- event(h1e, event)
+- h1e_pass_draw: true/false; passes draw to further sections
+- h1e_pass_update
+- h1e_pass_event
+
+*/
+
 ERROR_COOLDOWN = 30*5
 
 h1e.canvas = undefined
@@ -296,30 +309,25 @@ h1e.start = function(){
 	})
 
 	document.addEventListener('keydown', function(e){
-		var section = h1e.sections[h1e.sections.length-1]
-		if(!h1e.keys[e.keyCode]){ // Keydown repeats at least on Chromium 21
-			h1e.keys[e.keyCode] = true
-			if(section && section.event &&
-					section.event(h1e, {type:"keydown", key:e.keyCode})){
-				section._h1e_updated = true
-				e.preventDefault()
-			}
+		var events = []
+		if(!h1e.keys[e.keyCode]){
+			events.push({
+				h1e_event: {type:"keydown", key:e.keyCode},
+				orig_event:e
+			})
 		}
-		if(section && section.event &&
-				section.event(h1e, {type:"keydown_repeatable",
-				key:e.keyCode})){
-			section._h1e_updated = true
-			e.preventDefault()
-		}
+		events.push({
+			h1e_event: {type:"keydown_repeatable", key:e.keyCode},
+			orig_event:e
+		})
+		h1e.event_sections(events)
 	})
 	document.addEventListener('keyup', function(e){
 		h1e.keys[e.keyCode] = false
-		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.event &&
-				section.event(h1e, {type:"keyup", key:e.keyCode})){
-			section._h1e_updated = true
-			e.preventDefault()
-		}
+		h1e.event_sections([{
+			h1e_event: {type:"keyup", key:e.keyCode},
+			orig_event: e,
+		}])
 	})
 	document.addEventListener('keypress', function(e){
 		if(e.char !== undefined)
@@ -328,12 +336,10 @@ h1e.start = function(){
 			var char = String.fromCharCode(e.charCode)
 		else
 			return
-		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.event &&
-				section.event(h1e, {type:"keypress", key:e.keyCode, char:char})){
-			section._h1e_updated = true
-			e.preventDefault()
-		}
+		h1e.event_sections([{
+			h1e_event: {type:"keypress", key:e.keyCode, char:char},
+			orig_event: e,
+		}])
 	})
 	window.onfocus = function(e){
 		h1e.has_focus = true
@@ -498,10 +504,7 @@ h1e.start = function(){
 		var max_skip = Math.round(h1e.fps / 15)
 		while(now > last_update_time + 1000/h1e.fps - slop && frames < max_skip)
 		{
-			if(section && section.update){
-				var r = section.update(h1e)
-				if(r) section._h1e_updated = true
-			}
+			h1e.update_sections()
 			last_update_time += 1000/h1e.fps
 			if(last_update_time > now - slip)
 				last_update_time = now
@@ -526,7 +529,7 @@ h1e.start = function(){
 			return
 		}
 
-		var section = h1e.sections[h1e.sections.length-1]
+		var draw_needed = h1e.draw_needed()
 
 		h1e.ctx.save()
 		h1e.ctx.beginPath()
@@ -540,18 +543,17 @@ h1e.start = function(){
 			h1e.ctx.fillStyle = "#ffffff"
 			h1e.ctx.fillText("[Preloading...]", 40, 40)
 			h1e.ctx.restore()
-		} else if(section){
+		} else if(h1e.sections.length > 0){
 			if(!h1e.has_focus) h1e.nofocus_time += 1.0/h1e.fps
 			else               h1e.nofocus_time = 0
 			if(h1e.nofocus_time > 4 && h1e.nofocus_framedrop < 4){
+				// Not focused; display only every 4th frame
 				h1e.nofocus_framedrop++
-			// Redraw section if something has been updated
-			} else if(section._h1e_updated || (h1e.has_focus != last_has_focus)){
+			} else if(draw_needed || (h1e.has_focus != last_has_focus)){
+				// Something has been updated; redraw section
 				h1e.nofocus_framedrop = 0
 				draw_bg()
-				section.draw(h1e)
-				if(h1e.num_sprites_incomplete == 0)
-					section._h1e_updated = false
+				h1e.draw_sections()
 				if(!h1e.has_focus && h1e.cb_draw_no_focus)
 					h1e.cb_draw_no_focus(h1e)
 				last_has_focus = h1e.has_focus
@@ -574,10 +576,7 @@ h1e.start = function(){
 		// Do update after drawing, because that way there is usually enough
 		// time for this update before rendering
 		if(draw_does_update){
-			if(section && section.update){
-				var r = section.update(h1e)
-				if(r) section._h1e_updated = true
-			}
+			h1e.update_sections()
 			var now = Date.now()
 			last_update_time = now
 		}
@@ -586,6 +585,68 @@ h1e.start = function(){
 }
 
 /* Internal */
+
+/* Section helpers */
+
+h1e.draw_needed = function(){
+	for(var i=h1e.sections.length-1; i>=0; i--){
+		var section = h1e.sections[i]
+		if(section._h1e_updated)
+			return true
+		if(!section.h1e_pass_draw)
+			break;
+	}
+	return false
+}
+
+h1e.draw_sections = function(){
+	var to_draw = []
+	for(var i=h1e.sections.length-1; i>=0; i--){
+		var section = h1e.sections[i]
+		if(section && section.draw){
+			to_draw.unshift(section) // Prepend
+		}
+		if(!section.h1e_pass_draw)
+			break;
+	}
+	to_draw.forEach(function(section){
+		section.draw(h1e)
+		if(h1e.num_sprites_incomplete == 0)
+			section._h1e_updated = false
+	}, this)
+}
+
+h1e.update_sections = function(){
+	for(var i=h1e.sections.length-1; i>=0; i--){
+		var section = h1e.sections[i]
+		if(section && section.update){
+			var r = section.update(h1e)
+			if(r) section._h1e_updated = true
+		}
+		if(!section.h1e_pass_update)
+			break;
+	}
+}
+
+// events: [{h1e_event, orig_event}]
+h1e.event_sections = function(events){
+	for(var i=h1e.sections.length-1; i>=0; i--){
+		var section = h1e.sections[i]
+		var eaten = events.some(function(event){
+			h1e_event = event.h1e_event
+			orig_event = event.orig_event
+			if(section && section.event && section.event(h1e, h1e_event)){
+				section._h1e_updated = true
+				orig_event.preventDefault()
+				return true
+			}
+		}, this)
+		if(eaten || !section.h1e_pass_event)
+			break;
+	}
+}
+
+/* Image stuff */
 
 h1e.get_sprite_image = function(sprite){
 	h1e.checkobject(sprite)
