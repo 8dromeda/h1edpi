@@ -231,6 +231,10 @@ h1e.keyname_to_keycodes = function(keyname){
 		pagedown: [34],
 		backspace: [8],
 		shift: [16],
+		ctrl: [17],
+		alt: [18],
+		altgr: [225],
+		modifier: [16, 17, 18, 225],
 		"+": [187, 171, 107],
 		"-": [189, 173, 109],
 	}
@@ -255,10 +259,13 @@ h1e.iskey = function(key, keyname){
 }
 
 h1e.keydown = function(keyname){
-	var keycodes = h1e.keyname_to_keycodes(keyname)
-	return keycodes.some(function(keycode){
-		if(h1e.keys[keycode])
-			return true
+	var keynames = h1e.isarray(keyname) ? keyname : [keyname]
+	return keynames.some(function(keyname){
+		var keycodes = h1e.keyname_to_keycodes(keyname)
+		return keycodes.some(function(keycode){
+			if(h1e.keys[keycode])
+				return true
+		})
 	})
 }
 
