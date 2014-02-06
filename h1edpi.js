@@ -275,10 +275,12 @@ h1e.keydown = function(keyname){
 	var keynames = h1e.isarray(keyname) ? keyname : [keyname]
 	return keynames.some(function(keyname){
 		var keycodes = h1e.keyname_to_keycodes(keyname)
-		return keycodes.some(function(keycode){
+		var match = keycodes.some(function(keycode){
 			if(h1e.keys[keycode])
 				return true
 		})
+		if(match)
+			return true
 	})
 }
 
@@ -311,6 +313,7 @@ h1e.start = function(){
 	document.addEventListener('keydown', function(e){
 		var events = []
 		if(!h1e.keys[e.keyCode]){
+			h1e.keys[e.keyCode] = true
 			events.push({
 				h1e_event: {type:"keydown", key:e.keyCode},
 				orig_event:e
