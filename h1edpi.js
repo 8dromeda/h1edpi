@@ -311,6 +311,14 @@ h1e.start = function(){
 	})
 
 	document.addEventListener('keydown', function(e){
+		// Refresh these (they can get screwed up easily)
+		if(e.shiftKey !== undefined)
+			h1e.keys[16] = !!e.shiftKey
+		if(e.ctrlKey !== undefined)
+			h1e.keys[17] = !!e.ctrlKey
+		if(e.altKey !== undefined)
+			h1e.keys[18] = !!e.altKey
+		// Continue normally
 		var events = []
 		if(!h1e.keys[e.keyCode]){
 			h1e.keys[e.keyCode] = true
