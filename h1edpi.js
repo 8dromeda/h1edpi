@@ -782,7 +782,7 @@ h1e.preload.images_failed = {}
 h1e.preload.images = {}
 
 h1e.preload.image_loaded = function(name){
-	console.log("__preload: Image loaded: \""+name+"\"")
+	console.debug("__preload: Image loaded: \""+name+"\"")
 	delete h1e.preload.images_loading[name]
 	h1e.preload.num_images_loading--
 	if(h1e.preload.num_images_loading == 0){
@@ -804,7 +804,7 @@ h1e.preload.image_error = function(name){
 h1e.preload.add_image = function(name, src){
 	if(src === undefined)
 		src = name
-	console.log("__preload: preload.add_image(\""+name+"\", \""+src+"\")")
+	console.debug("__preload: preload.add_image(\""+name+"\", \""+src+"\")")
 	var img = new Image()
 	img.onload = function(){
 		h1e.preload.image_loaded(name)
