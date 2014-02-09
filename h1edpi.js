@@ -622,6 +622,16 @@ h1e.draw_needed = function(){
 }
 
 h1e.draw_sections = function(){
+	// before_draw() passed like update()
+	for(var i=h1e.sections.length-1; i>=0; i--){
+		var section = h1e.sections[i]
+		if(section && section.before_draw){
+			section.before_draw(h1e)
+		}
+		if(!section.h1e_pass_update)
+			break;
+	}
+	// Collect what to draw
 	var to_draw = []
 	for(var i=h1e.sections.length-1; i>=0; i--){
 		var section = h1e.sections[i]
@@ -631,6 +641,7 @@ h1e.draw_sections = function(){
 		if(!section.h1e_pass_draw)
 			break;
 	}
+	// Draw
 	to_draw.forEach(function(section){
 		section.draw(h1e)
 		if(h1e.num_sprites_incomplete == 0)
