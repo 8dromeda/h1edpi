@@ -231,6 +231,17 @@ h1e.top_section = function(){
 	return h1e.sections[h1e.sections.length-1]
 }
 
+h1e.receives_events = function(section){
+	for(var i=h1e.sections.length-1; i>=0; i--){
+		var section1 = h1e.sections[i]
+		if(section1 == section)
+			return true
+		if(!section1.h1e_pass_event)
+			break;
+	}
+	return false
+}
+
 h1e.keyname_to_keycodes = function(keyname){
 	var keycodes = {
 		left: [37],
