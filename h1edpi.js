@@ -51,6 +51,7 @@ h1e.mouse = {
 }
 h1e.nofocus_time = 0
 h1e.nofocus_framedrop = 0
+h1e.allow_event_grab_cb = undefined // function()->bool
 
 h1e.init = function(canvas, w, h, fps, opts){
 	h1e.checkdom(canvas)
@@ -322,6 +323,7 @@ h1e.start = function(){
 	})
 
 	document.addEventListener('keydown', function(e){
+		var do_grab = !(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
 		// Refresh these (they can get screwed up easily)
 		if(e.shiftKey !== undefined)
 			h1e.keys[16] = !!e.shiftKey
@@ -333,25 +335,33 @@ h1e.start = function(){
 		var events = []
 		if(!h1e.keys[e.keyCode]){
 			h1e.keys[e.keyCode] = true
+			if(do_grab){
+				events.push({
+					h1e_event: {type:"keydown", key:e.keyCode},
+					orig_event:e
+				})
+			}
+		}
+		if(do_grab){
 			events.push({
-				h1e_event: {type:"keydown", key:e.keyCode},
+				h1e_event: {type:"keydown_repeatable", key:e.keyCode},
 				orig_event:e
 			})
+			h1e.event_sections(events)
 		}
-		events.push({
-			h1e_event: {type:"keydown_repeatable", key:e.keyCode},
-			orig_event:e
-		})
-		h1e.event_sections(events)
 	})
 	document.addEventListener('keyup', function(e){
 		h1e.keys[e.keyCode] = false
+		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
+			return
 		h1e.event_sections([{
 			h1e_event: {type:"keyup", key:e.keyCode},
 			orig_event: e,
 		}])
 	})
 	document.addEventListener('keypress', function(e){
+		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
+			return
 		if(e.char !== undefined)
 			var char = e.char
 		else if(e.charCode >= 32)
@@ -371,15 +381,21 @@ h1e.start = function(){
 	}
 
 	document.addEventListener('mousemove', function(e){
+		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
+			return
 		var r = h1e.canvas.getBoundingClientRect()
 		h1e.mouse.x = Math.floor((e.clientX - r.left - h1e.off_x) / h1e.scale)
 		h1e.mouse.y = Math.floor((e.clientY - r.top - h1e.off_y) / h1e.scale)
 		h1e.mouse.out = false
 	})
 	document.addEventListener('mouseout', function(e){
+		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
+			return
 		h1e.mouse.out = true
 	})
 	document.addEventListener('mousedown', function(e){
+		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
+			return
 		if(e.button == 0)
 			h1e.mouse.buttons["left"] = true
 		if(e.button == 1)
@@ -391,6 +407,8 @@ h1e.start = function(){
 			section._h1e_updated = true
 	})
 	document.addEventListener('mouseup', function(e){
+		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
+			return
 		if(e.button == 0)
 			h1e.mouse.buttons["left"] = false
 		if(e.button == 1)
@@ -403,6 +421,8 @@ h1e.start = function(){
 	})
 
 	document.addEventListener('touchmove', function(e0){
+		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
+			return
 		e0.preventDefault()
 		var e = e0.changedTouches[0]
 		var r = h1e.canvas.getBoundingClientRect()
@@ -411,16 +431,22 @@ h1e.start = function(){
 		h1e.mouse.out = false
 	})
 	document.addEventListener('touchcancel', function(e0){
+		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
+			return
 		var e = e0.changedTouches[0]
 		h1e.mouse.buttons["touch"] = false
 		h1e.mouse.out = true
 	})
 	document.addEventListener('touchleave', function(e0){
+		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
+			return
 		var e = e0.changedTouches[0]
 		h1e.mouse.buttons["touch"] = false
 		h1e.mouse.out = true
 	})
 	document.addEventListener('touchstart', function(e0){
+		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
+			return
 		var e = e0.changedTouches[0]
 		h1e.mouse.buttons["touch"] = true
 		var r = h1e.canvas.getBoundingClientRect()
@@ -432,6 +458,8 @@ h1e.start = function(){
 			section._h1e_updated = true
 	})
 	document.addEventListener('touchend', function(e0){
+		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
+			return
 		e0.preventDefault()
 		var e = e0.changedTouches[0]
 		h1e.mouse.buttons["touch"] = false
