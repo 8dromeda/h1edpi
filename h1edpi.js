@@ -33,6 +33,7 @@ h1e.native_h = 0
 h1e.off_x = 0
 h1e.off_y = 0
 h1e.started = false
+h1e.imagecache = {}
 h1e.sprites = {}
 h1e.sections = []
 h1e.preloading = true
@@ -775,6 +776,14 @@ var mod_methods = [
 ]
 
 h1e.get_image = function(name, base){
+	//console.log("get_image("+name+", "+base+")")
+
+	// Using cache is possible if there is no base image
+	if(base === undefined && h1e.imagecache[name] !== undefined){
+		return h1e.imagecache[name]
+	}
+
+	// Otherwise we'll fetch and create the image
 	var img = undefined
 	var next = undefined
 
@@ -791,8 +800,12 @@ h1e.get_image = function(name, base){
 			h1e.error_cooldown = ERROR_COOLDOWN
 			return undefined
 		}
-		if(m === null)
+		if(m === null){
+			// Put bare images in cache too
+			console.debug("h1e.get_image: Caching \""+name+"\"")
+			h1e.imagecache[name] = img
 			return img
+		}
 		next = m[2]
 	}
 
@@ -825,6 +838,10 @@ h1e.get_image = function(name, base){
 		}
 		return h1e.get_image(next, img)
 	} else {
+		if(base === undefined){
+			console.debug("h1e.get_image: Caching \""+name+"\"")
+			h1e.imagecache[name] = img
+		}
 		return img
 	}
 }
