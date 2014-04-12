@@ -335,6 +335,8 @@ h1e.start = function(){
 
 	document.addEventListener('keydown', function(e){
 		var do_grab = !(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
+		var was_down = h1e.keys[e.keyCode]
+		h1e.keys[e.keyCode] = true
 		// Refresh these (they can get screwed up easily)
 		if(e.shiftKey !== undefined)
 			h1e.keys[16] = !!e.shiftKey
@@ -344,14 +346,11 @@ h1e.start = function(){
 			h1e.keys[18] = !!e.altKey
 		// Continue normally
 		var events = []
-		if(!h1e.keys[e.keyCode]){
-			h1e.keys[e.keyCode] = true
-			if(do_grab){
-				events.push({
-					h1e_event: {type:"keydown", key:e.keyCode},
-					orig_event:e
-				})
-			}
+		if(!was_down && do_grab){
+			events.push({
+				h1e_event: {type:"keydown", key:e.keyCode},
+				orig_event:e
+			})
 		}
 		if(do_grab){
 			events.push({
