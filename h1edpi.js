@@ -53,6 +53,11 @@ h1e.mouse = {
 h1e.nofocus_time = 0
 h1e.nofocus_framedrop = 0
 h1e.allow_event_grab_cb = undefined // function()->bool
+h1e.gamepad = undefined
+h1e.gamepad0_state = {
+	buttons: [],
+	axes: [],
+}
 
 h1e.init = function(canvas, w, h, fps, opts){
 	h1e.checkdom(canvas)
@@ -244,38 +249,51 @@ h1e.receives_events = function(section){
 	return false
 }
 
+// Modification not recommended
+h1e.base_keycodes = {
+	exact_left:  [37],
+	exact_up:    [38],
+	exact_right: [39],
+	exact_down:  [40],
+	left:  [37, "pad0_axis5_minus", "pad0_axis1_minus"],
+	up:    [38, "pad0_axis6_minus", "pad0_axis2_minus"],
+	right: [39, "pad0_axis5_plus",  "pad0_axis1_plus"],
+	down:  [40, "pad0_axis6_plus",  "pad0_axis2_plus"],
+	space: [32],
+	escape: [27],
+	enter: [13],
+	pageup: [33],
+	pagedown: [34],
+	backspace: [8],
+	shift: [16],
+	ctrl:  [17],
+	alt:   [18],
+	altgr: [225],
+	modifier: [16, 17, 18, 225],
+	"+": [187, 171, 107],
+	"-": [189, 173, 109],
+	"0": [48, 96],
+	"1": [49, 97],
+	"2": [50, 98],
+	"3": [51, 99],
+	"4": [52, 100],
+	"5": [53, 101],
+	"6": [54, 102],
+	"7": [55, 103],
+	"8": [56, 104],
+	"9": [57, 105],
+}
+
+// User-modifiable
+h1e.keycodes = {}
+
+for(var keyname in h1e.base_keycodes){
+	h1e.keycodes[keyname] = h1e.base_keycodes[keyname]
+}
+
 h1e.keyname_to_keycodes = function(keyname){
-	var keycodes = {
-		left: [37],
-		up: [38],
-		right: [39],
-		down: [40],
-		space: [32],
-		escape: [27],
-		enter: [13],
-		pageup: [33],
-		pagedown: [34],
-		backspace: [8],
-		shift: [16],
-		ctrl: [17],
-		alt: [18],
-		altgr: [225],
-		modifier: [16, 17, 18, 225],
-		"+": [187, 171, 107],
-		"-": [189, 173, 109],
-		"0": [48, 96],
-		"1": [49, 97],
-		"2": [50, 98],
-		"3": [51, 99],
-		"4": [52, 100],
-		"5": [53, 101],
-		"6": [54, 102],
-		"7": [55, 103],
-		"8": [56, 104],
-		"9": [57, 105],
-	}
-	if(keycodes[keyname])
-		return keycodes[keyname]
+	if(h1e.keycodes[keyname])
+		return h1e.keycodes[keyname]
 	if(h1e.isinteger(keyname))
 		return [keyname]
 	if(h1e.isstring(keyname) && keyname.length == 1)
@@ -486,6 +504,12 @@ h1e.start = function(){
 			section._h1e_updated = true
 	})
 
+	window.addEventListener("gamepadconnected", function(e) {
+		console.log("Gamepad connected at index %d: %s. %d buttons, %d axes.",
+				e.gamepad.index, e.gamepad.id,
+				e.gamepad.buttons.length, e.gamepad.axes.length);
+	});
+
 	h1e.ctx = h1e.canvas.getContext("2d")
 	h1e.ctx.imageSmoothingEnabled = false
 	h1e.ctx.webkitImageSmoothingEnabled = false
@@ -556,6 +580,9 @@ h1e.start = function(){
 			last_update_time = now
 			return
 		}
+
+		// This has to be called every frame before update_sections()
+		h1e.update_gamepad()
 
 		// Do the actual update(s)
 		var slop = 15
@@ -636,6 +663,9 @@ h1e.start = function(){
 		// Do update after drawing, because that way there is usually enough
 		// time for this update before rendering
 		if(draw_does_update){
+			// This has to be called every frame before update_sections()
+			h1e.update_gamepad()
+
 			h1e.update_sections()
 			var now = Date.now()
 			last_update_time = now
@@ -708,13 +738,100 @@ h1e.event_sections = function(events){
 			orig_event = event.orig_event
 			if(section && section.event && section.event(h1e, h1e_event)){
 				section._h1e_updated = true
-				orig_event.preventDefault()
+				if(orig_event)
+					orig_event.preventDefault()
 				return true
 			}
 		}, this)
 		if(eaten || !section.h1e_pass_event)
 			break;
 	}
+}
+
+/* Gamepad stuff */
+
+h1e.update_gamepad = function(){
+	var pads = navigator.getGamepads ? navigator.getGamepads() :
+			navigator.webkitGetGamepads ? navigator.webkitGetGamepads() :
+			navigator.webkitGamepads ? navigator.webkitGamepads :
+			[]
+	// This has to be done on every update because the state is always a new
+	// object and the old object isn't updated
+	if(pads.length >= 1 && pads[0] !== undefined)
+		h1e.gamepad = pads[0]
+	if(h1e.gamepad === undefined)
+		return
+	var pad = h1e.gamepad
+	var state = h1e.gamepad0_state
+	//console.log(pad.buttons)
+	var events = []
+	for(var i=0; i<pad.buttons.length; i++){
+		if(pad.buttons[i] != state.buttons[i]){
+			state.buttons[i] = pad.buttons[i]
+			var keycode = "pad0_"+(i+1)
+			console.log(keycode+" "+(pad.buttons[i]?"down":"up"))
+			h1e.keys[keycode] = !!pad.buttons[i]
+			if(pad.buttons[i]){
+				events.push({
+					h1e_event: {type:"keydown", key:keycode},
+				})
+				events.push({
+					h1e_event: {type:"keydown_repeatable", key:keycode},
+				})
+				events.push({
+					h1e_event: {type:"keypress", key:keycode},
+				})
+			} else {
+				events.push({
+					h1e_event: {type:"keyup", key:keycode},
+				})
+			}
+		}
+	}
+	var d0 = 0.2
+	var d1 = 0.3
+	for(var i=0; i<pad.axes.length; i++){
+		if(pad.axes[i] != state.axes[i]){
+			// Emulate direction buttons
+			var keycode_base = "pad0_axis"+(i+1)
+			var keycode_negative = keycode_base+"_minus"
+			var keycode_positive = keycode_base+"_plus"
+			if(pad.axes[i] >= -d0 && state.axes[i] < -d0){
+				events.push({
+					h1e_event: {type:"keyup", key:keycode_negative},
+				})
+				h1e.keys[keycode_negative] = false
+			}
+			if(pad.axes[i] <= d0 && state.axes[i] > d0){
+				events.push({
+					h1e_event: {type:"keyup", key:keycode_positive},
+				})
+				h1e.keys[keycode_positive] = false
+			}
+			if(pad.axes[i] > d1 && state.axes[i] <= d1){
+				events.push({
+					h1e_event: {type:"keydown", key:keycode_positive},
+				})
+				events.push({
+					h1e_event: {type:"keydown_repeatable", key:keycode_positive},
+				})
+				h1e.keys[keycode_positive] = true
+			}
+			if(pad.axes[i] < -d1 && state.axes[i] >= -d1){
+				events.push({
+					h1e_event: {type:"keydown", key:keycode_negative},
+				})
+				events.push({
+					h1e_event: {type:"keydown_repeatable", key:keycode_negative},
+				})
+				h1e.keys[keycode_negative] = true
+			}
+			state.axes[i] = pad.axes[i]
+		}
+	}
+	if(events.length > 0)
+		console.log("events="+h1e.dump(events))
+	h1e.event_sections(events)
 }
 
 /* Image stuff */
