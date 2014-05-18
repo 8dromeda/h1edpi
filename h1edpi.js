@@ -291,13 +291,20 @@ for(var keyname in h1e.base_keycodes){
 	h1e.keycodes[keyname] = h1e.base_keycodes[keyname]
 }
 
-h1e.keyname_to_keycodes = function(keyname){
-	if(h1e.keycodes[keyname])
-		return h1e.keycodes[keyname]
+h1e.keyname_to_keycodes = function(keyname, only_base_codes){
+	if(only_base_codes){
+		if(h1e.base_keycodes[keyname])
+			return h1e.base_keycodes[keyname]
+	} else {
+		if(h1e.keycodes[keyname])
+			return h1e.keycodes[keyname]
+	}
 	if(h1e.isinteger(keyname))
 		return [keyname]
 	if(h1e.isstring(keyname) && keyname.length == 1)
 		return [keyname.toUpperCase().charCodeAt(0)]
+	if(h1e.isstring(keyname) && keyname.substr(0,3) == "pad")
+		return [keyname]
 	throw new Error("Unknown keyname: \""+keyname+"\"")
 }
 
