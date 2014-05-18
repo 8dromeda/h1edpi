@@ -54,11 +54,7 @@ h1e.nofocus_time = 0
 h1e.nofocus_framedrop = 0
 h1e.allow_event_grab_cb = undefined // function()->bool
 h1e.gamepad = undefined
-h1e.gamepad0_state = {
-	buttons: [],
-	axes: [],
-	button_repeat_timers: [],
-}
+h1e.gamepad0_state = new GamepadState()
 
 h1e.init = function(canvas, w, h, fps, opts){
 	h1e.checkdom(canvas)
@@ -512,12 +508,6 @@ h1e.start = function(){
 			section._h1e_updated = true
 	})
 
-	window.addEventListener("gamepadconnected", function(e) {
-		console.log("Gamepad connected at index %d: %s. %d buttons, %d axes.",
-				e.gamepad.index, e.gamepad.id,
-				e.gamepad.buttons.length, e.gamepad.axes.length);
-	});
-
 	h1e.ctx = h1e.canvas.getContext("2d")
 	h1e.ctx.imageSmoothingEnabled = false
 	h1e.ctx.webkitImageSmoothingEnabled = false
@@ -758,6 +748,12 @@ h1e.event_sections = function(events){
 
 /* Gamepad stuff */
 
+function GamepadState(){
+	this.buttons = []
+	this.axes = []
+	this.button_repeat_timers = []
+}
+
 h1e.update_gamepad = function(){
 	var pads = navigator.getGamepads ? navigator.getGamepads() :
 			navigator.webkitGetGamepads ? navigator.webkitGetGamepads() :
@@ -765,8 +761,12 @@ h1e.update_gamepad = function(){
 			[]
 	// This has to be done on every update because the state is always a new
 	// object and the old object isn't updated
-	if(pads.length >= 1 && pads[0] !== undefined)
+	if(pads.length >= 1 && pads[0] !== undefined){
 		h1e.gamepad = pads[0]
+	} else {
+		h1e.gamepad = undefined
+		h1e.gamepad0_state = new GamepadState()
+	}
 	if(h1e.gamepad === undefined)
 		return
 	var pad = h1e.gamepad
@@ -775,7 +775,7 @@ h1e.update_gamepad = function(){
 	var events = []
 	for(var i=0; i<pad.buttons.length; i++){
 		var keycode = "pad0_"+(i+1)
-		if(pad.buttons[i] != state.buttons[i]){
+		if(!!pad.buttons[i] != !!state.buttons[i]){
 			state.buttons[i] = pad.buttons[i]
 			//console.log(keycode+" "+(pad.buttons[i]?"down":"up"))
 			h1e.keys[keycode] = !!pad.buttons[i]
