@@ -795,8 +795,8 @@ h1e.update_gamepad = function(){
 			}
 		}
 	}
-	var d0 = 0.2
-	var d1 = 0.3
+	var d0 = 0.4
+	var d1 = 0.6
 	for(var i=0; i<pad.axes.length; i++){
 		if(pad.axes[i] != state.axes[i]){
 			// Emulate direction buttons
