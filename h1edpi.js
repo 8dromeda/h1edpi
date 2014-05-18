@@ -57,6 +57,7 @@ h1e.gamepad = undefined
 h1e.gamepad0_state = {
 	buttons: [],
 	axes: [],
+	button_repeat_timers: [],
 }
 
 h1e.init = function(canvas, w, h, fps, opts){
@@ -773,9 +774,9 @@ h1e.update_gamepad = function(){
 	//console.log(pad.buttons)
 	var events = []
 	for(var i=0; i<pad.buttons.length; i++){
+		var keycode = "pad0_"+(i+1)
 		if(pad.buttons[i] != state.buttons[i]){
 			state.buttons[i] = pad.buttons[i]
-			var keycode = "pad0_"+(i+1)
 			//console.log(keycode+" "+(pad.buttons[i]?"down":"up"))
 			h1e.keys[keycode] = !!pad.buttons[i]
 			if(pad.buttons[i]){
@@ -788,21 +789,31 @@ h1e.update_gamepad = function(){
 				events.push({
 					h1e_event: {type:"keypress", key:keycode},
 				})
+				state.button_repeat_timers[i] = 0.5
 			} else {
 				events.push({
 					h1e_event: {type:"keyup", key:keycode},
 				})
 			}
 		}
+		else if(!!pad.buttons[i] && !!state.buttons[i]){
+			state.button_repeat_timers[i] -= 1.0/h1e.fps // Not right
+			if(state.button_repeat_timers[i] <= 0){
+				events.push({
+					h1e_event: {type:"keydown_repeatable", key:keycode},
+				})
+				state.button_repeat_timers[i] = 0.05
+			}
+		}
 	}
 	var d0 = 0.4
 	var d1 = 0.6
 	for(var i=0; i<pad.axes.length; i++){
+		var keycode_base = "pad0_axis"+(i+1)
+		var keycode_negative = keycode_base+"_minus"
+		var keycode_positive = keycode_base+"_plus"
 		if(pad.axes[i] != state.axes[i]){
 			// Emulate direction buttons
-			var keycode_base = "pad0_axis"+(i+1)
-			var keycode_negative = keycode_base+"_minus"
-			var keycode_positive = keycode_base+"_plus"
 			if(pad.axes[i] >= -d0 && state.axes[i] < -d0){
 				events.push({
 					h1e_event: {type:"keyup", key:keycode_negative},
@@ -823,6 +834,7 @@ h1e.update_gamepad = function(){
 					h1e_event: {type:"keydown_repeatable", key:keycode_positive},
 				})
 				h1e.keys[keycode_positive] = true
+				state.button_repeat_timers[100+i] = 0.5
 			}
 			if(pad.axes[i] < -d1 && state.axes[i] >= -d1){
 				events.push({
@@ -832,8 +844,27 @@ h1e.update_gamepad = function(){
 					h1e_event: {type:"keydown_repeatable", key:keycode_negative},
 				})
 				h1e.keys[keycode_negative] = true
+				state.button_repeat_timers[200+i] = 0.5
 			}
 			state.axes[i] = pad.axes[i]
+		}
+		else if(pad.axes[i] > d1){
+			state.button_repeat_timers[100+i] -= 1.0/h1e.fps // Not right
+			if(state.button_repeat_timers[100+i] <= 0){
+				events.push({
+					h1e_event: {type:"keydown_repeatable", key:keycode_positive},
+				})
+				state.button_repeat_timers[100+i] = 0.05
+			}
+		}
+		else if(pad.axes[i] < -d1){
+			state.button_repeat_timers[200+i] -= 1.0/h1e.fps // Not right
+			if(state.button_repeat_timers[200+i] <= 0){
+				events.push({
+					h1e_event: {type:"keydown_repeatable", key:keycode_negative},
+				})
+				state.button_repeat_timers[200+i] = 0.05
+			}
 		}
 	}
 	/*if(events.length > 0)
