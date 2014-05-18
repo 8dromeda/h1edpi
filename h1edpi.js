@@ -769,7 +769,7 @@ h1e.update_gamepad = function(){
 		if(pad.buttons[i] != state.buttons[i]){
 			state.buttons[i] = pad.buttons[i]
 			var keycode = "pad0_"+(i+1)
-			console.log(keycode+" "+(pad.buttons[i]?"down":"up"))
+			//console.log(keycode+" "+(pad.buttons[i]?"down":"up"))
 			h1e.keys[keycode] = !!pad.buttons[i]
 			if(pad.buttons[i]){
 				events.push({
@@ -829,8 +829,8 @@ h1e.update_gamepad = function(){
 			state.axes[i] = pad.axes[i]
 		}
 	}
-	if(events.length > 0)
-		console.log("events="+h1e.dump(events))
+	/*if(events.length > 0)
+		console.log("events="+h1e.dump(events))*/
 	h1e.event_sections(events)
 }
 
