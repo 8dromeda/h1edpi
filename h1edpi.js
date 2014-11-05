@@ -735,6 +735,8 @@ h1e.get_current_clickable_draw_target = function(){
 }
 
 h1e.draw_current_clickable_draw_target = function(){
+	if(h1e.mouse.out) // Mouse left window or touch not active
+		return
 	var target = h1e.get_current_clickable_draw_target()
 	if(target === undefined)
 		return
