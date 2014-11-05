@@ -731,7 +731,6 @@ h1e.get_current_clickable_draw_target = function(){
 			imprecise_target = target
 		}
 	}
-	console.log("imprecise_target:", imprecise_target)
 	return imprecise_target
 }
 
