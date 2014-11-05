@@ -787,15 +787,9 @@ h1e.draw_sections = function(){
 	h1e.reset_clickable_draw_targets()
 	// Draw
 	to_draw.forEach(function(section){
-		var tmp_cdts = h1e.clickable_draw_targets
-		h1e.clickable_draw_targets = []
-
 		section.draw(h1e)
 		if(h1e.num_sprites_incomplete == 0)
 			section._h1e_updated = false
-
-		if(h1e.clickable_draw_targets.length == 0)
-			h1e.clickable_draw_targets = tmp_cdts
 	}, this)
 }
 
