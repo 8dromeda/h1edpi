@@ -55,6 +55,8 @@ h1e.nofocus_framedrop = 0
 h1e.allow_event_grab_cb = undefined // function()->bool
 h1e.gamepad = undefined
 h1e.gamepad0_state = new GamepadState()
+h1e.clickable_draw_targets = [] // {rect=[x0, y0, w, h], cb=function}
+h1e.currently_drawn_clickable_draw_target = undefined
 
 h1e.init = function(canvas, w, h, fps, opts){
 	h1e.checkdom(canvas)
@@ -419,6 +421,12 @@ h1e.start = function(){
 		h1e.mouse.x = Math.floor((e.clientX - r.left - h1e.off_x) / h1e.scale)
 		h1e.mouse.y = Math.floor((e.clientY - r.top - h1e.off_y) / h1e.scale)
 		h1e.mouse.out = false
+		if(h1e.get_current_clickable_draw_target() !=
+				h1e.currently_drawn_clickable_draw_target){
+			var section = h1e.sections[h1e.sections.length-1]
+			if(section)
+				section._h1e_updated = true
+		}
 	})
 	document.addEventListener('mouseout', function(e){
 		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
@@ -448,8 +456,13 @@ h1e.start = function(){
 		if(e.button == 2)
 			h1e.mouse.buttons["right"] = false
 		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.event && section.event(h1e, {type:"mouseup"}))
+		if(section && section.event && section.event(h1e, {type:"mouseup"})){
 			section._h1e_updated = true
+		} else {
+			var target = h1e.get_current_clickable_draw_target()
+			if(target)
+				target.cb()
+		}
 	})
 
 	document.addEventListener('touchmove', function(e0){
@@ -642,6 +655,7 @@ h1e.start = function(){
 				if(!h1e.has_focus && h1e.cb_draw_no_focus)
 					h1e.cb_draw_no_focus(h1e)
 				last_has_focus = h1e.has_focus
+				h1e.draw_current_clickable_draw_target()
 			}
 		} else {
 			draw_bg()
@@ -672,9 +686,51 @@ h1e.start = function(){
 	window.requestAnimationFrameCompatible(draw)
 }
 
-/* Internal */
+/* Clickable draw targets */
 
-/* Section helpers */
+h1e.add_clickable_draw_target = function(rect, cb){
+	h1e.checkarray(rect)
+	h1e.checkfunction(cb)
+	h1e.clickable_draw_targets.push({
+		rect: rect,
+		cb: cb,
+	})
+}
+
+/* Internal: Clickable draw targets */
+
+var CDT_PAD = 4
+
+// Returns callback or undefined
+h1e.get_current_clickable_draw_target = function(){
+	var mx = h1e.mouse.x
+	var my = h1e.mouse.y
+	for(var i=h1e.clickable_draw_targets.length-1; i>=0; i--){
+		var target = h1e.clickable_draw_targets[i]
+		var rect = target.rect
+		if(mx >= rect[0] - CDT_PAD && mx < rect[0] + rect[2] + CDT_PAD &&
+				my >= rect[1] - CDT_PAD && my < rect[1] + rect[3] + CDT_PAD){
+			return target
+		}
+	}
+	return undefined
+}
+
+h1e.draw_current_clickable_draw_target = function(){
+	var target = h1e.get_current_clickable_draw_target()
+	if(target === undefined)
+		return
+	var rect = target.rect
+	h1e.draw_rect(rect[0], rect[1], rect[2], rect[3], "rgba(255, 255, 255, 0.3)")
+	h1e.currently_drawn_clickable_draw_target = target
+}
+
+h1e.reset_clickable_draw_targets = function(){
+	h1e.clickable_draw_targets = []
+	h1e.currently_drawn_clickable_draw_target = undefined
+}
+
+/* Internal: Section helpers */
 
 h1e.draw_needed = function(){
 	for(var i=h1e.sections.length-1; i>=0; i--){
@@ -707,11 +763,19 @@ h1e.draw_sections = function(){
 		if(!section.h1e_pass_draw)
 			break;
 	}
+	// Reset clickable draw targets
+	h1e.reset_clickable_draw_targets()
 	// Draw
 	to_draw.forEach(function(section){
+		var tmp_cdts = h1e.clickable_draw_targets
+		h1e.clickable_draw_targets = []
+
 		section.draw(h1e)
 		if(h1e.num_sprites_incomplete == 0)
 			section._h1e_updated = false
+
+		if(h1e.clickable_draw_targets.length == 0)
+			h1e.clickable_draw_targets = tmp_cdts
 	}, this)
 }
 
@@ -746,7 +810,7 @@ h1e.event_sections = function(events){
 	}
 }
 
-/* Gamepad stuff */
+/* Internal: Gamepad stuff */
 
 function GamepadState(){
 	this.buttons = []
@@ -872,7 +936,7 @@ h1e.update_gamepad = function(){
 	h1e.event_sections(events)
 }
 
-/* Image stuff */
+/* Internal: Image stuff */
 
 h1e.get_sprite_image = function(sprite){
 	h1e.checkobject(sprite)
@@ -1000,7 +1064,7 @@ h1e.get_image = function(name, base){
 	}
 }
 
-/* Image preloading */
+/* Internal: Image preloading */
 
 h1e.preload = {}
 
@@ -1067,7 +1131,7 @@ h1e.preload.clear = function(){
 	h1e.preload.images = {}
 }
 
-/* Image processing */
+/* Internal: Image processing */
 
 h1e.scale_image = function(img, scale)
 {
@@ -1205,7 +1269,7 @@ h1e.recolor_image = function(img, from, to)
 	return img2
 }
 
-/* Browser feature detection */
+/* Internal: Browser feature detection */
 
 // Options: native_scaling = true/false/"lowend"/undefined
 h1e.detect_native_scaling = function(opts){
@@ -1273,6 +1337,8 @@ h1e.isinteger = function(value){
 	return !(typeof value !== "number" || !isFinite(value) || value != Math.floor(value)) }
 h1e.isdom = function(value){
 	return h1e.isobject(value) && !!value.nodeType }
+h1e.isfunction = function(value){
+	return !(typeof value !== "function") }
 
 h1e.checkobject = function(value){
 	if(!h1e.isobject(value)) throw new Error("Value is not object") }
@@ -1290,6 +1356,8 @@ h1e.checkinteger = function(value){
 	if(!h1e.isinteger(value)) throw new Error("Value is not integer") }
 h1e.checkdom = function(value){
 	if(!h1e.isdom(value)) throw new Error("Value is not dom") }
+h1e.checkfunction = function(value){
+	if(!h1e.isfunction(value)) throw new Error("Value is not function") }
 h1e.checkbool_or_undefined = function(value){
 	if(!h1e.isbool(value) && value !== undefined)
 		throw new Error("Value is not bool or undefined") }
