@@ -717,12 +717,12 @@ h1e.get_current_clickable_draw_target = function(){
 	var imprecise_target = undefined
 	for(var i=h1e.clickable_draw_targets.length-1; i>=0; i--){
 		var target = h1e.clickable_draw_targets[i]
-		if(target.cb === "__hide")
-			continue
 		var rect = target.rect
 		// Prioritize exact rectangle
 		if(mx >= rect[0] && mx < rect[0] + rect[2] &&
 				my >= rect[1] && my < rect[1] + rect[3]){
+			if(target.cb === "__hide")
+				break
 			return target
 		}
 		// Fall back to padded rectangle
