@@ -55,7 +55,7 @@ h1e.nofocus_framedrop = 0
 h1e.allow_event_grab_cb = undefined // function()->bool
 h1e.gamepad = undefined
 h1e.gamepad0_state = new GamepadState()
-h1e.clickable_draw_targets = [] // {rect=[x0, y0, w, h], cb=function}
+h1e.clickable_draw_targets = [] // {rect=[x0, y0, w, h], cb=function or "__hide"}
 h1e.currently_drawn_clickable_draw_target = undefined
 
 h1e.init = function(canvas, w, h, fps, opts){
@@ -157,6 +157,10 @@ h1e.draw_rect = function(x, y, w, h, fillStyle){
 	h1e.ctx.fillStyle = fillStyle
 	var s = h1e.scale
 	h1e.ctx.fillRect(fl(x*s), fl(y*s), fl(w*s), fl(h*s))
+
+	// Hide clickables below this rectangle if it is large
+	if(w > 16 && h >= 16)
+		h1e.add_clickable_draw_target([x, y, w, h], "__hide")
 }
 
 h1e.draw_sprite = function(x, y, sprite_name, opts){
@@ -423,9 +427,7 @@ h1e.start = function(){
 		h1e.mouse.out = false
 		if(h1e.get_current_clickable_draw_target() !=
 				h1e.currently_drawn_clickable_draw_target){
-			var section = h1e.sections[h1e.sections.length-1]
-			if(section)
-				section._h1e_updated = true
+			h1e.trigger_redraw()
 		}
 	})
 	document.addEventListener('mouseout', function(e){
@@ -460,7 +462,7 @@ h1e.start = function(){
 			section._h1e_updated = true
 		} else {
 			var target = h1e.get_current_clickable_draw_target()
-			if(target)
+			if(target && target.cb !== "__hide")
 				target.cb()
 		}
 	})
@@ -686,11 +688,18 @@ h1e.start = function(){
 	window.requestAnimationFrameCompatible(draw)
 }
 
+h1e.trigger_redraw = function(){
+	var section = h1e.sections[h1e.sections.length-1]
+	if(section)
+		section._h1e_updated = true
+}
+
 /* Clickable draw targets */
 
 h1e.add_clickable_draw_target = function(rect, cb){
 	h1e.checkarray(rect)
-	h1e.checkfunction(cb)
+	if(!h1e.isfunction(cb) && cb !== "__hide")
+		throw "add_clickable_draw_target: Invalid cb"
 	h1e.clickable_draw_targets.push({
 		rect: rect,
 		cb: cb,
@@ -719,6 +728,8 @@ h1e.get_current_clickable_draw_target = function(){
 h1e.draw_current_clickable_draw_target = function(){
 	var target = h1e.get_current_clickable_draw_target()
 	if(target === undefined)
+		return
+	if(target.cb === "__hide")
 		return
 	var rect = target.rect
 	h1e.draw_rect(rect[0], rect[1], rect[2], rect[3], "rgba(255, 255, 255, 0.3)")
