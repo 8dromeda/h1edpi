@@ -460,14 +460,17 @@ h1e.start = function(){
 		if(e.button == 2)
 			h1e.mouse.buttons["right"] = false
 
-		var handled = h1e.event_sections([{
-			h1e_event: {type:"mouseup"},
-			orig_event: e,
-		}], {disable_auto_update: true})
+		var handled = false
+		var target = h1e.get_current_clickable_draw_target()
+		if(target && target.cb !== "__hide"){
+			target.cb()
+			handled = true
+		}
 		if(!handled){
-			var target = h1e.get_current_clickable_draw_target()
-			if(target && target.cb !== "__hide")
-				target.cb()
+			handled = h1e.event_sections([{
+				h1e_event: {type:"mouseup"},
+				orig_event: e,
+			}], {disable_auto_update: true})
 		}
 	})
 
