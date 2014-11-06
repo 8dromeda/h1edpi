@@ -462,8 +462,11 @@ h1e.start = function(){
 
 		var handled = false
 		var target = h1e.get_current_clickable_draw_target()
-		if(target && target.cb !== "__hide"){
-			target.cb()
+		if(target){
+			if(target.cb !== "__hide"){
+				target.cb()
+			}
+			// Always disable mouseup events if there is a cdt in the way
 			handled = true
 		}
 		if(!handled){
