@@ -444,9 +444,11 @@ h1e.start = function(){
 			h1e.mouse.buttons["middle"] = true
 		if(e.button == 2)
 			h1e.mouse.buttons["right"] = true
-		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.event && section.event(h1e, {type:"mousedown"}))
-			section._h1e_updated = true
+
+		h1e.event_sections([{
+			h1e_event: {type:"mousedown"},
+			orig_event: e,
+		}], {disable_auto_update: true})
 	})
 	document.addEventListener('mouseup', function(e){
 		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
@@ -457,10 +459,12 @@ h1e.start = function(){
 			h1e.mouse.buttons["middle"] = false
 		if(e.button == 2)
 			h1e.mouse.buttons["right"] = false
-		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.event && section.event(h1e, {type:"mouseup"})){
-			section._h1e_updated = true
-		} else {
+
+		var handled = h1e.event_sections([{
+			h1e_event: {type:"mouseup"},
+			orig_event: e,
+		}], {disable_auto_update: true})
+		if(!handled){
 			var target = h1e.get_current_clickable_draw_target()
 			if(target && target.cb !== "__hide")
 				target.cb()
@@ -808,14 +812,16 @@ h1e.update_sections = function(){
 }
 
 // events: [{h1e_event, orig_event}]
-h1e.event_sections = function(events){
+// opts: {disable_auto_update: boolean}
+h1e.event_sections = function(events, opts){
 	for(var i=h1e.sections.length-1; i>=0; i--){
 		var section = h1e.sections[i]
 		var eaten = events.some(function(event){
 			h1e_event = event.h1e_event
 			orig_event = event.orig_event
 			if(section && section.event && section.event(h1e, h1e_event)){
-				section._h1e_updated = true
+				if(!opts || !opts.disable_auto_update)
+					section._h1e_updated = true
 				if(orig_event)
 					orig_event.preventDefault()
 				return true
