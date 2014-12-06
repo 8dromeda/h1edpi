@@ -59,6 +59,9 @@ h1e.clickable_draw_targets = [] // {rect=[x0, y0, w, h], cb=function or "__hide"
 h1e.currently_drawn_clickable_draw_target = undefined
 h1e.default_text_bgcolor = undefined
 h1e.default_text_fgcolor = "#888888"
+h1e.default_text_fonttype = "native"
+h1e.default_text_native_fontname = "sans-serif"
+h1e.default_text_sprite_fontname = "font"
 
 h1e.init = function(canvas, w, h, fps, opts){
 	h1e.checkdom(canvas)
@@ -222,8 +225,9 @@ h1e.draw_sprite = function(x, y, sprite_name, opts){
 
 h1e.measure_text = function(text, fonttype, fontname, fontsize)
 {
-	fonttype = h1e.use_default(fonttype, "native")
-	fontname = h1e.use_default(fontname, fonttype=="native"?"sans-serif":"font")
+	fonttype = h1e.use_default(fonttype, h1e.default_text_fonttype)
+	fontname = h1e.use_default(fontname, fonttype=="native" ?
+			h1e.default_text_native_fontname : h1e.default_text_sprite_fontname)
 	fontsize = h1e.use_default(fontsize, 8)
 	if(fonttype == "native"){
 		h1e.ctx.font = ""+(fontsize*h1e.scale)+"px "+fontname
@@ -239,9 +243,9 @@ h1e.measure_text = function(text, fonttype, fontname, fontsize)
 // TODO: Configurable sprite font size
 h1e.draw_text = function(x, y, text, opts)
 {
-	var fonttype = h1e.use_default(opts && opts.fonttype, "native")
-	var fontname = h1e.use_default(opts && opts.fontname,
-			fonttype=="native" ? "sans-serif" : "font")
+	var fonttype = h1e.use_default(opts && opts.fonttype, h1e.default_text_fonttype)
+	var fontname = h1e.use_default(opts && opts.fontname, fonttype=="native" ?
+			h1e.default_text_native_fontname : h1e.default_text_sprite_fontname)
 	if(!h1e.isstring(text))
 		text = "Invalid string"
 
