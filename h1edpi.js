@@ -57,6 +57,8 @@ h1e.gamepad = undefined
 h1e.gamepad0_state = new GamepadState()
 h1e.clickable_draw_targets = [] // {rect=[x0, y0, w, h], cb=function or "__hide"}
 h1e.currently_drawn_clickable_draw_target = undefined
+h1e.default_text_bgcolor = undefined
+h1e.default_text_fgcolor = "#888888"
 
 h1e.init = function(canvas, w, h, fps, opts){
 	h1e.checkdom(canvas)
@@ -216,6 +218,90 @@ h1e.draw_sprite = function(x, y, sprite_name, opts){
 			fl(dx*s), fl(dy*s), fl(dw*s), fl(dh*s))
 	if(opts && opts.alpha !== undefined)
 		ctx.globalAlpha = 1.0
+}
+
+h1e.measure_text = function(text, fonttype, fontname, fontsize)
+{
+	fonttype = h1e.use_default(fonttype, "native")
+	fontname = h1e.use_default(fontname, fonttype=="native"?"sans-serif":"font")
+	fontsize = h1e.use_default(fontsize, 8)
+	if(fonttype == "native"){
+		h1e.ctx.font = ""+(fontsize*h1e.scale)+"px "+fontname
+		var m = h1e.ctx.measureText(text)
+		return {w:m.width/h1e.scale+1, h:fontsize}
+	} else {
+		return {w:text.length*fontsize*5/8, h:fontsize}
+	}
+}
+
+// Native font: opts.fonttype="native", opts.fontname="sans-serif"
+// Bitmap font: opts.fonttype="sprite", opts.fontnaem="sprite name"
+// TODO: Configurable sprite font size
+h1e.draw_text = function(x, y, text, opts)
+{
+	var fonttype = h1e.use_default(opts && opts.fonttype, "native")
+	var fontname = h1e.use_default(opts && opts.fontname,
+			fonttype=="native" ? "sans-serif" : "font")
+	if(!h1e.isstring(text))
+		text = "Invalid string"
+
+	if(fonttype == "native"){
+		x = Math.floor(x*h1e.scale)/h1e.scale
+		y = Math.floor(y*h1e.scale)/h1e.scale
+		var fontsize = 8
+		if(opts && opts.fontsize !== undefined)
+			fontsize = opts.fontsize
+		h1e.ctx.font = ""+(fontsize*h1e.scale)+"px "+fontname
+		var m = h1e.measure_text(text, fonttype, fontname, fontsize)
+		var bgcolor = undefined
+		if(!opts || !opts.bgcolor)
+			bgcolor = h1e.default_text_bgcolor
+		else if(opts.bgcolor != "none")
+			bgcolor = opts.bgcolor
+		if(opts && opts.right_align){
+			if(bgcolor !== undefined)
+				h1e.draw_rect(x-m.w-1, y, m.w+1, m.h, bgcolor)
+			h1e.ctx.textAlign = "right"
+		} else {
+			if(bgcolor !== undefined)
+				h1e.draw_rect(x, y, m.w+1, m.h, bgcolor)
+			h1e.ctx.textAlign = "left"
+			x += 1
+		}
+		if(opts && opts.fgcolor)
+			h1e.ctx.fillStyle = opts.fgcolor
+		else
+			h1e.ctx.fillStyle = h1e.default_text_fgcolor
+		h1e.ctx.fillText(text, (x)*h1e.scale, (y+6)*h1e.scale)
+
+		// Click callback
+		if(opts && opts.click_cb){
+			var rect = undefined
+			if(opts && opts.right_align)
+				rect = [x-m.w-1, y, m.w+1, m.h]
+			else
+				rect = [x-1, y, m.w+1, m.h]
+			h1e.add_clickable_draw_target(rect, opts.click_cb)
+		}
+	} else {
+		if(opts && opts.right_align)
+			x -= h1e.measure_text(text, fonttype, fontname).w
+		text = text.toUpperCase()
+		var x1 = x
+		var y1 = y
+		for(var i in text){
+			var c = text.charCodeAt(i)
+			if(c == 10){
+				x1 = x
+				y1 += 8
+				continue
+			}
+			if(c < 0 || c > 127)
+				c = 0 // Shows up as a black box
+			h1e.draw_sprite(x1, y1, fontname, {frame: c})
+			x1 += 5
+		}
+	}
 }
 
 h1e.push_section = function(section){
@@ -1448,6 +1534,10 @@ h1e.pad = function(n, d, w, z){ // number, precision, width, padchar
 	z = z || ' ';
 	n = n + '';
 	return n.length >= w ? n : new Array(w - n.length + 1).join(z) + n;
+}
+
+h1e.use_default = function(v, replace){
+	return v === undefined ? replace : v
 }
 
 }()
