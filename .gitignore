@@ -1,0 +1,10 @@
+*.sw*
+*~
+*.gch
+*.sql
+*.pyc
+session.vim
+session.vim.auto
+.directory
+*.orig
+
