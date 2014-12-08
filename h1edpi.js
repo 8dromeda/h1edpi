@@ -159,13 +159,13 @@ h1e.get_frame_count = function(sprite_name){
 	return sprite.tcs.length
 }
 
-h1e.draw_rect = function(x, y, w, h, fillStyle){
+h1e.draw_rect = function(x, y, w, h, fillStyle, opts){
 	h1e.ctx.fillStyle = fillStyle
 	var s = h1e.scale
 	h1e.ctx.fillRect(fl(x*s), fl(y*s), fl(w*s), fl(h*s))
 
 	// Hide clickables below this rectangle if it is large
-	if(w > 16 && h >= 16)
+	if(w > 16 && h >= 16 && (!opts || !opts.disable_cdt_autohide))
 		h1e.add_clickable_draw_target([x, y, w, h], "__hide")
 }
 
@@ -844,7 +844,8 @@ h1e.draw_current_clickable_draw_target = function(){
 	if(target.cb === "__hide")
 		return
 	var rect = target.rect
-	h1e.draw_rect(rect[0], rect[1], rect[2], rect[3], "rgba(255, 255, 255, 0.3)")
+	h1e.draw_rect(rect[0], rect[1], rect[2], rect[3], "rgba(255, 255, 255, 0.3)",
+			{disable_cdt_autohide:true})
 	h1e.currently_drawn_clickable_draw_target = target
 }
 
