@@ -520,6 +520,10 @@ h1e.start = function(){
 				h1e.currently_drawn_clickable_draw_target){
 			h1e.trigger_redraw()
 		}
+		h1e.event_sections([{
+			h1e_event: {type:"mousemove"},
+			orig_event: e,
+		}], {disable_auto_update: true})
 	})
 	document.addEventListener('mouseout', function(e){
 		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
@@ -577,6 +581,10 @@ h1e.start = function(){
 		h1e.mouse.x = Math.floor((e.clientX - r.left - h1e.off_x) / h1e.scale)
 		h1e.mouse.y = Math.floor((e.clientY - r.top - h1e.off_y) / h1e.scale)
 		h1e.mouse.out = false
+		var section = h1e.sections[h1e.sections.length-1]
+		if(section && section.event && section.event(h1e, {type:"mousemove"})){
+			//section._h1e_updated = true
+		}
 	})
 	document.addEventListener('touchcancel', function(e0){
 		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
