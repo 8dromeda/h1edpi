@@ -529,6 +529,10 @@ h1e.start = function(){
 		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
 			return
 		h1e.mouse.out = true
+		if(h1e.get_current_clickable_draw_target() !=
+				h1e.currently_drawn_clickable_draw_target){
+			h1e.trigger_redraw()
+		}
 	})
 	document.addEventListener('mousedown', function(e){
 		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
@@ -619,6 +623,7 @@ h1e.start = function(){
 		e0.preventDefault()
 		var e = e0.changedTouches[0]
 		h1e.mouse.buttons["touch"] = false
+		h1e.mouse.out = true
 		var section = h1e.sections[h1e.sections.length-1]
 		if(section && section.event && section.event(h1e, {type:"mouseup"}))
 			section._h1e_updated = true
