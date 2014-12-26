@@ -16,6 +16,10 @@ Section:
 - h1e_pass_update
 - h1e_pass_event
 
+Options for h1e.init():
+- native_scaling = true/false/"lowend"/undefined
+- stretch_canvas = true/false
+
 */
 
 ERROR_COOLDOWN = 30*5
@@ -23,11 +27,14 @@ ERROR_COOLDOWN = 30*5
 h1e.canvas = undefined
 h1e.w = undefined
 h1e.h = undefined
+h1e.allocated_w = undefined
+h1e.allocated_h = undefined
 h1e.fps = undefined
 h1e.ctx = undefined
 h1e.scale = 1
 h1e.native_scaling = false
 h1e.native_scale = 1
+h1e.stretch_canvas = false
 h1e.native_w = 0
 h1e.native_h = 0
 h1e.off_x = 0
@@ -49,6 +56,7 @@ h1e.mouse = {
 	x: 0,
 	y: 0,
 	buttons: {},
+	touch_detected: false,
 }
 h1e.nofocus_time = 0
 h1e.nofocus_framedrop = 0
@@ -76,12 +84,17 @@ h1e.init = function(canvas, w, h, fps, opts){
 	h1e.h = h
 	h1e.fps = fps
 
+	if(opts.stretch_canvas === true)
+		h1e.stretch_canvas = true
+
 	h1e.detect_native_scaling(opts)
 
 	h1e.update_scale()
 }
 
 h1e.resize_canvas = function(w, h, direct){
+	h1e.allocated_w = w
+	h1e.allocated_h = h
 	if(h1e.native_scaling){
 		// Find the largest fitting scale
 		var scale = 1
@@ -106,8 +119,20 @@ h1e.resize_canvas = function(w, h, direct){
 			$("#main_canvas")[0].width = w
 			$("#main_canvas")[0].height = h
 		} else {
-			$("#main_canvas")[0].width = Math.floor((w)/12)*12
-			$("#main_canvas")[0].height = Math.floor((h)/12)*12
+			if(!h1e.stretch_canvas){
+				$("#main_canvas")[0].width = Math.floor((w)/12)*12
+				$("#main_canvas")[0].height = Math.floor((h)/12)*12
+			} else {
+				// Find a scale that is large enough for w and h
+				var scale = 1
+				for(;;){
+					if(h1e.w*(scale+1) >= w && h1e.h*(scale+1) >= h)
+						break;
+					scale += 1
+				}
+				$("#main_canvas")[0].width = h1e.w * scale
+				$("#main_canvas")[0].height = h1e.h * scale
+			}
 		}
 	}
 	h1e.update_scale()
@@ -125,6 +150,10 @@ h1e.update_scale = function(){
 			h1e.scale = 1
 		h1e.off_x = (canvas.width  - h1e.w*h1e.scale) / 2
 		h1e.off_y = (canvas.height - h1e.h*h1e.scale) / 2
+		if(h1e.stretch_canvas){
+			$("#main_canvas")[0].style.width  = h1e.allocated_w+"px"
+			$("#main_canvas")[0].style.height = h1e.allocated_h+"px"
+		}
 	}
 	var section = h1e.sections[h1e.sections.length-1]
 	if(section)
@@ -510,11 +539,11 @@ h1e.start = function(){
 	}
 
 	document.addEventListener('mousemove', function(e){
+		if(h1e.touch_detected)
+			return
 		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
 			return
-		var r = h1e.canvas.getBoundingClientRect()
-		h1e.mouse.x = Math.floor((e.clientX - r.left - h1e.off_x) / h1e.scale)
-		h1e.mouse.y = Math.floor((e.clientY - r.top - h1e.off_y) / h1e.scale)
+		h1e.set_mouse_xy_from_native(e.clientX, e.clientY)
 		h1e.mouse.out = false
 		if(h1e.get_current_clickable_draw_target() !=
 				h1e.currently_drawn_clickable_draw_target){
@@ -526,6 +555,8 @@ h1e.start = function(){
 		}], {disable_auto_update: true})
 	})
 	document.addEventListener('mouseout', function(e){
+		if(h1e.touch_detected)
+			return
 		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
 			return
 		h1e.mouse.out = true
@@ -535,6 +566,8 @@ h1e.start = function(){
 		}
 	})
 	document.addEventListener('mousedown', function(e){
+		if(h1e.touch_detected)
+			return
 		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
 			return
 		if(e.button == 0)
@@ -550,6 +583,8 @@ h1e.start = function(){
 		}], {disable_auto_update: true})
 	})
 	document.addEventListener('mouseup', function(e){
+		if(h1e.touch_detected)
+			return
 		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
 			return
 		if(e.button == 0)
@@ -559,6 +594,7 @@ h1e.start = function(){
 		if(e.button == 2)
 			h1e.mouse.buttons["right"] = false
 
+		// Handle CDTs
 		var handled = false
 		var target = h1e.get_current_clickable_draw_target()
 		if(target){
@@ -567,7 +603,9 @@ h1e.start = function(){
 			}
 			// Always disable mouseup events if there is a cdt in the way
 			handled = true
+			e.preventDefault()
 		}
+		// Handle sections
 		if(!handled){
 			handled = h1e.event_sections([{
 				h1e_event: {type:"mouseup"},
@@ -577,13 +615,12 @@ h1e.start = function(){
 	})
 
 	document.addEventListener('touchmove', function(e0){
+		h1e.touch_detected = true
 		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
 			return
 		e0.preventDefault()
 		var e = e0.changedTouches[0]
-		var r = h1e.canvas.getBoundingClientRect()
-		h1e.mouse.x = Math.floor((e.clientX - r.left - h1e.off_x) / h1e.scale)
-		h1e.mouse.y = Math.floor((e.clientY - r.top - h1e.off_y) / h1e.scale)
+		h1e.set_mouse_xy_from_native(e.clientX, e.clientY)
 		h1e.mouse.out = false
 		var section = h1e.sections[h1e.sections.length-1]
 		if(section && section.event && section.event(h1e, {type:"mousemove"})){
@@ -591,6 +628,7 @@ h1e.start = function(){
 		}
 	})
 	document.addEventListener('touchcancel', function(e0){
+		h1e.touch_detected = true
 		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
 			return
 		var e = e0.changedTouches[0]
@@ -598,6 +636,7 @@ h1e.start = function(){
 		h1e.mouse.out = true
 	})
 	document.addEventListener('touchleave', function(e0){
+		h1e.touch_detected = true
 		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
 			return
 		var e = e0.changedTouches[0]
@@ -605,36 +644,43 @@ h1e.start = function(){
 		h1e.mouse.out = true
 	})
 	document.addEventListener('touchstart', function(e0){
+		h1e.touch_detected = true
 		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
 			return
 		var e = e0.changedTouches[0]
 		h1e.mouse.buttons["touch"] = true
-		var r = h1e.canvas.getBoundingClientRect()
-		h1e.mouse.x = Math.floor((e.clientX - r.left - h1e.off_x) / h1e.scale)
-		h1e.mouse.y = Math.floor((e.clientY - r.top - h1e.off_y) / h1e.scale)
+		h1e.set_mouse_xy_from_native(e.clientX, e.clientY)
 		h1e.mouse.out = false
 		var section = h1e.sections[h1e.sections.length-1]
 		if(section && section.event && section.event(h1e, {type:"mousedown"}))
 			section._h1e_updated = true
 	})
 	document.addEventListener('touchend', function(e0){
+		h1e.touch_detected = true
 		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
 			return
 		e0.preventDefault()
 		var e = e0.changedTouches[0]
 		h1e.mouse.buttons["touch"] = false
 		h1e.mouse.out = true
-		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.event && section.event(h1e, {type:"mouseup"}))
-			section._h1e_updated = true
-	})
-	h1e.canvas.addEventListener('touchend', function(e0){
-		e0.preventDefault()
-		var e = e0.changedTouches[0]
-		h1e.mouse.buttons["touch"] = false
-		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.event && section.event(h1e, {type:"mouseup"}))
-			section._h1e_updated = true
+
+		// Handle CDTs
+		var handled = false
+		var target = h1e.get_current_clickable_draw_target()
+		if(target){
+			if(target.cb !== "__hide"){
+				target.cb()
+			}
+			// Always disable touchend events if there is a cdt in the way
+			handled = true
+			e.preventDefault()
+		}
+		// Handle sections
+		if(!handled){
+			var section = h1e.sections[h1e.sections.length-1]
+			if(section && section.event && section.event(h1e, {type:"mouseup"}))
+				section._h1e_updated = true
+		}
 	})
 
 	h1e.ctx = h1e.canvas.getContext("2d")
@@ -940,6 +986,23 @@ h1e.event_sections = function(events, opts){
 		}, this)
 		if(eaten || !section.h1e_pass_event)
 			break;
+	}
+}
+
+
+/* Internal: Mouse */
+
+h1e.set_mouse_xy_from_native = function(native_x, native_y){
+	var r = h1e.canvas.getBoundingClientRect()
+	if(h1e.stretch_canvas){
+		h1e.mouse.x = Math.floor((native_x - r.left - h1e.off_x) / h1e.allocated_w * h1e.w)
+		h1e.mouse.y = Math.floor((native_y - r.top - h1e.off_y) / h1e.allocated_h * h1e.h)
+		//console.log("allocated_w:",h1e.allocated_w," h1e.w:",h1e.w)
+		//console.log("native:", native_x, native_y)
+		//console.log("h1e.mouse:", h1e.mouse.x, native_y)
+	} else {
+		h1e.mouse.x = Math.floor((native_x - r.left - h1e.off_x) / h1e.scale)
+		h1e.mouse.y = Math.floor((native_y - r.top - h1e.off_y) / h1e.scale)
 	}
 }
 
