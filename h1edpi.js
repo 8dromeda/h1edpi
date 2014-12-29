@@ -673,7 +673,7 @@ h1e.start = function(){
 			}
 			// Always disable touchend events if there is a cdt in the way
 			handled = true
-			e.preventDefault()
+			e0.preventDefault()
 		}
 		// Handle sections
 		if(!handled){
