@@ -193,9 +193,13 @@ h1e.draw_rect = function(x, y, w, h, fillStyle, opts){
 	var s = h1e.scale
 	h1e.ctx.fillRect(fl(x*s), fl(y*s), fl(w*s), fl(h*s))
 
-	// Hide clickables below this rectangle if it is large
-	if(w > 16 && h >= 16 && (!opts || !opts.disable_cdt_autohide))
-		h1e.add_clickable_draw_target([x, y, w, h], "__hide")
+	if(opts && opts.click_cb){
+		h1e.add_clickable_draw_target([x, y, w, h], opts.click_cb)
+	} else {
+		// Hide clickables below this rectangle if it is large
+		if(w > 16 && h >= 16 && (!opts || !opts.disable_cdt_autohide))
+			h1e.add_clickable_draw_target([x, y, w, h], "__hide")
+	}
 }
 
 h1e.draw_sprite = function(x, y, sprite_name, opts){
