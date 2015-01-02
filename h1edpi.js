@@ -57,6 +57,7 @@ h1e.mouse = {
 	y: 0,
 	buttons: {},
 	touch_detected: false,
+	down_positions: {},
 }
 h1e.nofocus_time = 0
 h1e.nofocus_framedrop = 0
@@ -574,15 +575,18 @@ h1e.start = function(){
 			return
 		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
 			return
-		if(e.button == 0)
-			h1e.mouse.buttons["left"] = true
-		if(e.button == 1)
-			h1e.mouse.buttons["middle"] = true
-		if(e.button == 2)
-			h1e.mouse.buttons["right"] = true
+
+		var button = ({
+			0: "left",
+			1: "middle",
+			2: "right",
+		})[e.button]
+
+		h1e.mouse.buttons[button] = true
+		h1e.mouse.down_positions[button] = {x:h1e.mouse.x, y:h1e.mouse.y}
 
 		h1e.event_sections([{
-			h1e_event: {type:"mousedown"},
+			h1e_event: {type:"mousedown", button:button},
 			orig_event: e,
 		}], {disable_auto_update: true})
 	})
@@ -591,28 +595,35 @@ h1e.start = function(){
 			return
 		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
 			return
-		if(e.button == 0)
-			h1e.mouse.buttons["left"] = false
-		if(e.button == 1)
-			h1e.mouse.buttons["middle"] = false
-		if(e.button == 2)
-			h1e.mouse.buttons["right"] = false
 
-		// Handle CDTs
+		var button = ({
+			0: "left",
+			1: "middle",
+			2: "right",
+		})[e.button]
+
+		h1e.mouse.buttons[button] = false
+
 		var handled = false
-		var target = h1e.get_current_clickable_draw_target()
-		if(target){
-			if(target.cb !== "__hide"){
-				target.cb()
+		// Handle CDTs (ignore if dragging)
+		if(button == "left" &&
+				Math.abs(h1e.mouse.down_positions[button].x - h1e.mouse.x) < 5 &&
+				Math.abs(h1e.mouse.down_positions[button].y - h1e.mouse.y) < 5)
+		{
+			var target = h1e.get_current_clickable_draw_target()
+			if(target){
+				if(target.cb !== "__hide"){
+					target.cb()
+				}
+				// Always disable mouseup events if there is a cdt in the way
+				handled = true
+				e.preventDefault()
 			}
-			// Always disable mouseup events if there is a cdt in the way
-			handled = true
-			e.preventDefault()
 		}
 		// Handle sections
 		if(!handled){
 			handled = h1e.event_sections([{
-				h1e_event: {type:"mouseup"},
+				h1e_event: {type:"mouseup", button:button},
 				orig_event: e,
 			}], {disable_auto_update: true})
 		}
@@ -648,41 +659,53 @@ h1e.start = function(){
 		h1e.mouse.out = true
 	})
 	document.addEventListener('touchstart', function(e0){
+		console.log("touchstart")
 		h1e.touch_detected = true
 		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
 			return
 		var e = e0.changedTouches[0]
-		h1e.mouse.buttons["touch"] = true
 		h1e.set_mouse_xy_from_native(e.clientX, e.clientY)
+		var button = "touch"
+		h1e.mouse.buttons[button] = true
+		h1e.mouse.down_positions[button] = {x:h1e.mouse.x, y:h1e.mouse.y}
 		h1e.mouse.out = false
 		var section = h1e.sections[h1e.sections.length-1]
-		if(section && section.event && section.event(h1e, {type:"mousedown"}))
+		if(section && section.event &&
+				section.event(h1e, {type:"mousedown", button:button}))
 			section._h1e_updated = true
 	})
 	document.addEventListener('touchend', function(e0){
+		console.log("touchend")
 		h1e.touch_detected = true
 		if(h1e.allow_event_grab_cb && !h1e.allow_event_grab_cb())
 			return
 		e0.preventDefault()
 		var e = e0.changedTouches[0]
-		h1e.mouse.buttons["touch"] = false
+		var button = "touch"
+		h1e.mouse.buttons[button] = false
 		h1e.mouse.out = true
 
-		// Handle CDTs
 		var handled = false
-		var target = h1e.get_current_clickable_draw_target()
-		if(target){
-			if(target.cb !== "__hide"){
-				target.cb()
+		// Handle CDTs (ignore if dragging)
+		if(
+			Math.abs(h1e.mouse.down_positions[button].x - h1e.mouse.x) < 5 &&
+			Math.abs(h1e.mouse.down_positions[button].y - h1e.mouse.y) < 5
+		){
+			var target = h1e.get_current_clickable_draw_target()
+			if(target){
+				if(target.cb !== "__hide"){
+					target.cb()
+				}
+				// Always disable touchend events if there is a cdt in the way
+				handled = true
+				e0.preventDefault()
 			}
-			// Always disable touchend events if there is a cdt in the way
-			handled = true
-			e0.preventDefault()
 		}
 		// Handle sections
 		if(!handled){
 			var section = h1e.sections[h1e.sections.length-1]
-			if(section && section.event && section.event(h1e, {type:"mouseup"}))
+			if(section && section.event &&
+					section.event(h1e, {type:"mouseup", button:button}))
 				section._h1e_updated = true
 		}
 	})
