@@ -40,7 +40,7 @@ h1e.native_h = 0
 h1e.off_x = 0
 h1e.off_y = 0
 h1e.started = false
-h1e.imagecache = {}
+h1e.imagecache = {} // name -> Image (at source resolution) (NOTE: Insert runtime-generated source images into h1e.preload.images instead)
 h1e.sprites = {}
 h1e.sections = []
 h1e.preloading = true
@@ -180,6 +180,40 @@ h1e.def_sprite = function(sprite_name, img_name, tcs, off){
 		draw_iteration: 0,
 		error_count: 0,
 	}
+}
+
+// Generate image into preload cache
+h1e.generate_image = function(image_name, image_w, image_h, cb){
+	h1e.checkstring(image_name)
+	h1e.checkfunction(cb)
+
+	// Create temporary canvas
+	var canvas = document.createElement('canvas')
+	canvas.width = image_w
+	canvas.height = image_h
+	var ctx = canvas.getContext("2d")
+
+	// Preserve context
+	var restore = {}
+	restore.ctx = h1e.ctx
+	restore.scale = h1e.scale
+
+	// Set up context
+	h1e.ctx = ctx
+	h1e.scale = 1
+
+	// Call generation callback
+	cb()
+
+	// Restore context
+	h1e.ctx = restore.ctx
+	h1e.scale = restore.scale
+
+	// Insert image into source cache
+	var dataurl = canvas.toDataURL()
+	var img = new Image()
+	img.src = dataurl
+	h1e.preload.images[image_name] = img
 }
 
 h1e.get_frame_count = function(sprite_name){
