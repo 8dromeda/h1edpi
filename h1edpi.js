@@ -345,7 +345,7 @@ h1e.draw_text = function(x, y, text, opts)
 			h1e.ctx.fillStyle = opts.fgcolor
 		else
 			h1e.ctx.fillStyle = h1e.default_text_fgcolor
-		h1e.ctx.fillText(text, (x)*h1e.scale, (y+6)*h1e.scale)
+		h1e.ctx.fillText(text, (x)*h1e.scale, (y+fontsize*0.75)*h1e.scale)
 
 		// Click callback
 		if(opts && opts.click_cb){
