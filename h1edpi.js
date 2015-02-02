@@ -59,7 +59,7 @@ h1e.mouse = {
 	touch_detected: false,
 	down_positions: {},
 }
-h1e.save_frames_when_not_focused = false
+h1e.save_frames_when_not_focused_seconds = 300
 h1e.nofocus_time = 0
 h1e.nofocus_framedrop = 0
 h1e.allow_event_grab_cb = undefined // function()->bool
@@ -868,8 +868,8 @@ h1e.start = function(){
 		} else if(h1e.sections.length > 0){
 			if(!h1e.has_focus) h1e.nofocus_time += 1.0/h1e.fps
 			else               h1e.nofocus_time = 0
-			if(h1e.save_frames_when_not_focused &&
-					h1e.nofocus_time > 4 && h1e.nofocus_framedrop < 4){
+			if(h1e.nofocus_time > h1e.save_frames_when_not_focused_seconds &&
+					h1e.nofocus_framedrop < 8){
 				// Not focused; display only every 4th frame
 				h1e.nofocus_framedrop++
 			} else if(draw_needed || (h1e.has_focus != last_has_focus)){
